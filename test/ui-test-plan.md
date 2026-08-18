@@ -2,12 +2,15 @@
 
 The test runner starts a new Stockie process for every case. Expected output is compared exactly after line-ending normalization; do not include user input in it.
 
-## Test Case: echo a command and exit
+## Test Case: add, list, remove, and exit
 ### Aim
-Verify that Stockie echoes a normal command, then says goodbye and exits for `bye`.
+Verify that Stockie adds an item, lists it, removes it by name, and exits with `bye`.
 
 ### Inputs
 ```text
+add book
+list
+remove book
 list
 bye
 ```
@@ -25,18 +28,30 @@ Hello! I'm Stockie.
 What can I do for you?
 ____________________________________________________________
 ____________________________________________________________
- list
+ added: book
+____________________________________________________________
+____________________________________________________________
+ 1. book
+____________________________________________________________
+____________________________________________________________
+ removed: book
+____________________________________________________________
+____________________________________________________________
+ No items in list
 ____________________________________________________________
 Bye. Hope to see you again soon!
 ____________________________________________________________
 ```
 
-## Test Case: case-insensitive bye command
+## Test Case: case-insensitive names and commands
 ### Aim
-Verify that an uppercase `BYE` command exits instead of being echoed.
+Verify that command names and item-name lookups are case-insensitive, while the original display text is preserved.
 
 ### Inputs
 ```text
+ADD Book
+add book
+remove bOoK
 BYE
 ```
 
@@ -51,6 +66,15 @@ ____________________________________________________________
 
 Hello! I'm Stockie.
 What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ added: Book
+____________________________________________________________
+____________________________________________________________
+ item already exists: Book
+____________________________________________________________
+____________________________________________________________
+ removed: Book
 ____________________________________________________________
 Bye. Hope to see you again soon!
 ____________________________________________________________
