@@ -8,9 +8,9 @@ Verify that Stockie tracks invoice batches, updates totals after additions and r
 
 ### Inputs
 ```text
-add book INV001 10 12.50
+add book SKU001 INV001 10 12.50 31-12-2026 UPC001
 list
-add book INV002 5 15.00
+add book SKU001 INV002 5 15.00 30-11-2026
 remove book INV002
 bye
 ```
@@ -34,9 +34,11 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
  1. book
+    sku: SKU001
+    category: perishable
     total quantity: 10
     inventory cost: 125.00
-    invoice INV001: quantity 10, unit price 12.50
+    invoice INV001: quantity 10, unit price 12.50, upc UPC001, expiry date 31-12-2026
 ____________________________________________________________
 ____________________________________________________________
  added: book
@@ -52,13 +54,46 @@ Bye. Hope to see you again soon!
 ____________________________________________________________
 ```
 
+## Test Case: confirm an expired perishable batch
+### Aim
+Verify that Stockie warns before adding an expired batch and accepts it after a `yes` confirmation.
+
+### Inputs
+```text
+add milk SKU-MILK INV001 2 3.25 01-01-2020
+yes
+bye
+```
+
+### Expected Output
+```text
+____________________________________________________________
+ ____  _             _    _      
+/ ___|| |_ ___   ___| | _(_) ___ 
+\___ \| __/ _ \ / __| |/ / |/ _ \
+ ___) | || (_) | (__|   <| |  __/
+|____/ \__\___/ \___|_|\_\_|\___|
+
+Hello! I'm Stockie.
+What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ warning: this batch expired on 01-01-2020. Add it anyway? (yes/no)
+ added: milk
+ total quantity: 2
+ inventory cost: 6.50
+____________________________________________________________
+Bye. Hope to see you again soon!
+____________________________________________________________
+```
+
 ## Test Case: item names with spaces
 ### Aim
 Verify that item names may contain whitespace when adding and removing a batch.
 
 ### Inputs
 ```text
-add red book INV001 2 3.25
+add red book SKU-RED INV001 2 3.25
 remove red book INV001
 bye
 ```
@@ -95,8 +130,9 @@ Verify that invoice numbers are unique per item and that removing the final batc
 
 ### Inputs
 ```text
-add Book INV001 1 2.00
-add book inv001 3 4.00
+add Book SKU-BOOK INV001 1 2.00 31-12-2026
+add book SKU-BOOK inv001 3 4.00 30-11-2026
+add book SKU-BOOK INV002 3 4.00
 remove BOOK INV001
 list
 bye
@@ -121,6 +157,9 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
  invoice already exists: inv001
+____________________________________________________________
+____________________________________________________________
+ item category does not match existing item: book
 ____________________________________________________________
 ____________________________________________________________
  removed: INV001
