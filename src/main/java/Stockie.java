@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -27,6 +28,10 @@ public class Stockie {
 
     /** Item categories determine which immutable batch subtype an inventory accepts. */
     private enum ItemCategory { PERISHABLE, NON_PERISHABLE }
+    /** Required fields for adding an item to inventory. */
+    private static final String[] REQUIRED_FIELDS = {"item", "sku", "invoice", "quantity", "price"};
+    /** Optional fields for adding an item to inventory */
+    private static final String[] OPTIONAL_FIELDS = {"expiry", "upc"};
 
     /** Greets the user, processes commands, and exits on {@code bye}. */
     public static void main(String[] args) {
@@ -70,44 +75,21 @@ public class Stockie {
         }
     }
 
-    /**
-     * Adds a batch using {@code add item sku invoice quantity unitPrice [expiryDate] [upc]}.
-     * The item name may contain spaces. An expiry date makes the batch perishable.
-     */
+    /** Adds a batch using order-independent {@code --field value} arguments. */
     private static void addBatch(String arguments, Scanner scanner) {
-        String[] fields = arguments.split("\\s+");
-        if (fields.length < 5) {
-            System.out.println(" usage: add <item> <sku> <invoice> <quantity> <unit price> [expiry date] [upc]");
+        Map<String, String> fields = parseNamedArguments(arguments);
+        if (fields == null) {
             return;
         }
-
-        int end = fields.length;
-        String upc = null;
-        String expiryText = null;
-        if (end >= 6 && isExpiryDate(fields[end - 1])) {
-            expiryText = fields[--end];
-        } else if (end >= 7 && isExpiryDate(fields[end - 2])) {
-            upc = fields[end - 1];
-            expiryText = fields[end - 2];
-            end -= 2;
-        } else if (end >= 6 && !isNumeric(fields[end - 1])) {
-            upc = fields[--end];
-        }
-
-        int priceIndex = end - 1;
-        int itemEnd = priceIndex - 4;
-        if (itemEnd < 0) {
-            System.out.println(" usage: add <item> <sku> <invoice> <quantity> <unit price> [expiry date] [upc]");
-            return;
-        }
-
-        String itemName = joinFields(fields, 0, itemEnd);
-        String sku = fields[priceIndex - 3];
-        String invoiceNumber = fields[priceIndex - 2];
-        Integer quantity = parsePositiveQuantity(fields[priceIndex - 1]);
-        BigDecimal unitPrice = parseNonNegativePrice(fields[priceIndex]);
+        String itemName = fields.get("item");
+        String sku = fields.get("sku");
+        String invoiceNumber = fields.get("invoice");
+        Integer quantity = parsePositiveQuantity(fields.get("quantity"));
+        BigDecimal unitPrice = parseNonNegativePrice(fields.get("price"));
+        String expiryText = fields.get("expiry");
         LocalDate expiryDate = parseExpiryDate(expiryText);
         boolean hasExpiry = expiryText != null;
+        String upc = fields.get("upc");
         if (quantity == null || unitPrice == null || (hasExpiry && expiryDate == null)) return;
 
         if (expiryDate != null && expiryDate.isBefore(LocalDate.now())) {
@@ -144,6 +126,70 @@ public class Stockie {
         }
         item.addBatch(invoiceKey, invoiceNumber, quantity, unitPrice, expiryDate, upc);
         printTotals(" added: " + itemName, item);
+    }
+
+    /** Parses named arguments and rejects unknown, duplicate, empty, or missing fields. */
+    private static Map<String, String> parseNamedArguments(String arguments) {
+        String[] tokens = arguments.trim().isEmpty() ? new String[0] : arguments.trim().split("\\s+");
+        HashMap<String, String> values = new HashMap<>();
+        String currentKey = null;
+        StringBuilder currentValue = new StringBuilder();
+
+        for (String token : tokens) {
+            if (token.startsWith("--")) {
+                if (currentKey != null && !storeArgument(values, currentKey, currentValue.toString())) {
+                    return null;
+                }
+                currentKey = token.substring(2).toLowerCase(Locale.ROOT);
+                if (!isSupportedArgument(currentKey)) {
+                    System.out.println(" unknown field: --" + currentKey);
+                    return null;
+                }
+                currentValue.setLength(0);
+            } else if (currentKey == null) {
+                System.out.println(" values must follow a named field such as --item");
+                return null;
+            } else {
+                if (currentValue.length() > 0) currentValue.append(' ');
+                currentValue.append(token);
+            }
+        }
+        if (currentKey != null && !storeArgument(values, currentKey, currentValue.toString())) {
+            return null;
+        }
+
+        StringBuilder missing = new StringBuilder();
+        for (String field : REQUIRED_FIELDS) {
+            if (!values.containsKey(field)) {
+                if (missing.length() > 0) missing.append(", ");
+                missing.append("--").append(field);
+            }
+        }
+        if (missing.length() > 0) {
+            System.out.println(" missing required fields: " + missing);
+            return null;
+        }
+        return values;
+    }
+
+    /** Stores one parsed argument after checking that it is non-empty and unique. */
+    private static boolean storeArgument(Map<String, String> values, String key, String value) {
+        if (value.trim().isEmpty()) {
+            System.out.println(" field --" + key + " requires a value");
+            return false;
+        }
+        if (values.containsKey(key)) {
+            System.out.println(" duplicate field: --" + key);
+            return false;
+        }
+        values.put(key, value.trim());
+        return true;
+    }
+
+    /** Returns whether a named field is supported by the add command. */
+    private static boolean isSupportedArgument(String key) {
+        return Arrays.stream(REQUIRED_FIELDS).anyMatch(key::equals) 
+        || Arrays.stream(OPTIONAL_FIELDS).anyMatch(key::equals);
     }
 
     /** Removes an entire batch using {@code remove item invoice}. */
@@ -204,6 +250,10 @@ public class Stockie {
 
     /** Parses a strictly positive quantity. */
     private static Integer parsePositiveQuantity(String text) {
+        if (text == null) {
+            System.out.println(" quantity must be a positive whole number");
+            return null;
+        }
         try {
             int quantity = Integer.parseInt(text);
             if (quantity > 0) return quantity;
@@ -214,6 +264,10 @@ public class Stockie {
 
     /** Parses a non-negative unit price. */
     private static BigDecimal parseNonNegativePrice(String text) {
+        if (text == null) {
+            System.out.println(" unit price must be a non-negative number");
+            return null;
+        }
         try {
             BigDecimal price = new BigDecimal(text);
             if (price.signum() >= 0) return price;
@@ -233,38 +287,8 @@ public class Stockie {
         }
     }
 
-    /** Returns whether a token is a valid expiry date without printing an error. */
-    private static boolean isExpiryDate(String text) {
-        try {
-            LocalDate.parse(text, DATE_FORMAT);
-            return true;
-        } catch (DateTimeParseException ignored) {
-            return false;
-        }
-    }
-
-    /** Returns whether a token can represent a numeric unit price. */
-    private static boolean isNumeric(String text) {
-        try {
-            new BigDecimal(text);
-            return true;
-        } catch (NumberFormatException ignored) {
-            return false;
-        }
-    }
-
     /** Normalizes command data for case-insensitive lookup. */
     private static String normalize(String value) { return value.toLowerCase(Locale.ROOT); }
-
-    /** Joins item-name tokens while preserving their words. */
-    private static String joinFields(String[] fields, int start, int end) {
-        StringBuilder result = new StringBuilder();
-        for (int index = start; index <= end; index++) {
-            if (index > start) result.append(' ');
-            result.append(fields[index]);
-        }
-        return result.toString();
-    }
 
     /** Formats monetary values to two decimal places. */
     private static String formatPrice(BigDecimal price) {

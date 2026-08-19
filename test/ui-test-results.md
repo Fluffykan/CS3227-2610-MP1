@@ -1,6 +1,6 @@
 # UI Test Results
 
-Run: 2026-08-19T11:13:48
+Run: 2026-08-19T11:43:20
 
 ## Test Case: add and remove inventory batches
 **Aim:** Verify that Stockie tracks invoice batches, updates totals after additions and removal, lists batch details, and exits with `bye`.
@@ -9,9 +9,9 @@ Run: 2026-08-19T11:13:48
 
 ### Console Input
 ```text
-add book SKU001 INV001 10 12.50 31-12-2026 UPC001
+add --item book --sku SKU001 --invoice INV001 --quantity 10 --price 12.50 --expiry 31-12-2026 --upc UPC001
 list
-add book SKU001 INV002 5 15.00 30-11-2026
+add --item book --sku SKU001 --invoice INV002 --quantity 5 --price 15.00 --expiry 30-11-2026
 remove book INV002
 bye
 ```
@@ -62,7 +62,7 @@ ____________________________________________________________
 
 ### Console Input
 ```text
-add milk SKU-MILK INV001 2 3.25 01-01-2020
+add --item milk --sku SKU-MILK --invoice INV001 --quantity 2 --price 3.25 --expiry 01-01-2020
 yes
 bye
 ```
@@ -96,7 +96,7 @@ ____________________________________________________________
 
 ### Console Input
 ```text
-add red book SKU-RED INV001 2 3.25
+add --item red book --sku SKU-RED --invoice INV001 --quantity 2 --price 3.25
 remove red book INV001
 bye
 ```
@@ -134,9 +134,9 @@ ____________________________________________________________
 
 ### Console Input
 ```text
-add Book SKU-BOOK INV001 1 2.00 31-12-2026
-add book SKU-BOOK inv001 3 4.00 30-11-2026
-add book SKU-BOOK INV002 3 4.00
+add --item Book --sku SKU-BOOK --invoice INV001 --quantity 1 --price 2.00 --expiry 31-12-2026
+add --item book --sku SKU-BOOK --invoice inv001 --quantity 3 --price 4.00 --expiry 30-11-2026
+add --item book --sku SKU-BOOK --invoice INV002 --quantity 3 --price 4.00
 remove BOOK INV001
 list
 bye

@@ -22,4 +22,19 @@ Prerequisites: JDK 25, update Intellij to the most recent version.
    |____/ \__\___/ \___|_|\_\_|\___|
    ```
 
+## Adding inventory batches
+
+Use named fields in any order. Values continue until the next named field, so
+item names may contain spaces without quotes:
+
+```text
+add --item red book --sku SKU-RED --invoice INV001 --quantity 2 --price 3.25
+add --item milk --sku SKU-MILK --invoice INV002 --quantity 5 --price 2.75 --expiry 31-12-2026 --upc 012345678901
+```
+
+The required fields are `--item`, `--sku`, `--invoice`, `--quantity`, and
+`--price`. `--expiry` and `--upc` are optional. An expiry date makes the item
+perishable; omit it for non-perishables. Unknown, duplicate, missing, or empty
+fields are rejected before the inventory is changed.
+
 **Warning:** Keep the `src\main\java` folder as the root folder for Java files (i.e., don't rename those folders or move Java files to another folder outside of this folder path), as this is the default location some tools (e.g., Gradle) expect to find Java files.
