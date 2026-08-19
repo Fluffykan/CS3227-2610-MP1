@@ -16,5 +16,11 @@ bin/
 # Temp files
 _temp/
 
+# Stockie runtime persistence
+/stockie-inventory.dat
+/stockie-inventory.dat.tmp
+**/stockie-inventory.dat
+**/stockie-inventory.dat.tmp
+
 /text-ui-test/ACTUAL.TXT
 text-ui-test/EXPECTED-UNIX.TXT

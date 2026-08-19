@@ -15,6 +15,7 @@ PLAN_PATH = Path("test/ui-test-plan.md")
 RESULTS_PATH = Path("test/ui-test-results.md")
 SOURCE_DIRECTORY = Path("src/main/java")
 CLASS_DIRECTORY = Path("_temp/ui-test-classes")
+TEST_DATA_DIRECTORY = Path("_temp/ui-test-data")
 ENTRY_POINT = "Stockie"
 TEST_TIMEOUT_SECONDS = 10
 
@@ -111,10 +112,24 @@ def write_results(records: list[dict], termination: str | None = None) -> None:
     RESULTS_PATH.write_text("\n".join(lines), encoding="utf-8")
 
 
-def run_case(repo: Path, case: TestCase) -> str:
+def prepare_test_data_file(repo: Path, index: int) -> Path:
+    """Create a fresh persistence file that cannot overlap production storage."""
+    data_directory = repo / TEST_DATA_DIRECTORY
+    data_directory.mkdir(parents=True, exist_ok=True)
+    data_file = data_directory / f"case-{index}.dat"
+    production_file = (repo / "stockie-inventory.dat").resolve()
+    if data_file.resolve() == production_file:
+        raise RuntimeError("UI test persistence path must differ from production persistence path")
+    data_file.unlink(missing_ok=True)
+    data_file.touch()
+    return data_file
+
+
+def run_case(repo: Path, case: TestCase, data_file: Path) -> str:
     """Run one fresh Stockie process and return its standard output."""
     result = subprocess.run(
-        ["java", "-cp", str(repo / CLASS_DIRECTORY), ENTRY_POINT],
+        ["java", f"-Dstockie.data.file={data_file}", "-cp",
+         str(repo / CLASS_DIRECTORY), ENTRY_POINT],
         cwd=repo, input=case.inputs + "\n", capture_output=True, text=True,
         timeout=TEST_TIMEOUT_SECONDS, check=False,
     )
@@ -139,7 +154,8 @@ def main() -> int:
         compile_program(repo)
         records: list[dict] = []
         for index, case in enumerate(cases, start=1):
-            actual = run_case(repo, case)
+            test_data_file = prepare_test_data_file(repo, index)
+            actual = run_case(repo, case, test_data_file)
             passed = actual == case.expected_output
             records.append({"case": case, "actual": actual, "passed": passed})
             write_results(records)

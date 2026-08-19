@@ -1,6 +1,6 @@
 # UI Test Results
 
-Run: 2026-08-19T11:43:20
+Run: 2026-08-19T17:02:38
 
 ## Test Case: add and remove inventory batches
 **Aim:** Verify that Stockie tracks invoice batches, updates totals after additions and removal, lists batch details, and exits with `bye`.

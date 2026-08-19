@@ -1,5 +1,9 @@
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -9,6 +13,11 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,7 +31,12 @@ public class Stockie {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd-MM-uuuu")
             .withResolverStyle(ResolverStyle.STRICT);
     /** Maps normalized item names to their inventory. */
-    private static final HashMap<String, InventoryItem> inventory = new HashMap<>();
+    private static final InventoryService inventory = new InventoryService();
+    /** Stores the inventory between application sessions. */
+    private static final InventoryRepository repository = new FileInventoryRepository(Path.of(
+            System.getProperty("stockie.data.file", "stockie-inventory.dat")));
+    /** Coordinates command execution and the undo/redo history. */
+    private static final CommandManager commandManager = new CommandManager(inventory, repository);
     /** Parses a remove command whose final token is an invoice number. */
     private static final Pattern REMOVE_ARGUMENTS = Pattern.compile("^(.+)\\s+(\\S+)$");
 
@@ -35,6 +49,11 @@ public class Stockie {
 
     /** Greets the user, processes commands, and exits on {@code bye}. */
     public static void main(String[] args) {
+        try {
+            inventory.load(repository);
+        } catch (IOException | ClassNotFoundException exception) {
+            System.out.println(" Unable to load saved inventory; starting with an empty inventory.");
+        }
         String banner = " ____  _             _    _      \n"
                 + "/ ___|| |_ ___   ___| | _(_) ___ \n"
                 + "\\___ \\| __/ _ \\ / __| |/ / |/ _ \\\n"
@@ -71,6 +90,8 @@ public class Stockie {
         case "add": addBatch(arguments, scanner); break;
         case "remove": removeBatch(arguments); break;
         case "list": listItems(arguments); break;
+        case "undo": undo(); break;
+        case "redo": redo(); break;
         default: System.out.println(" " + input); break;
         }
     }
@@ -110,8 +131,6 @@ public class Stockie {
                 System.out.println(" cannot track more than " + MAX_ITEMS + " items");
                 return;
             }
-            item = new InventoryItem(itemName, sku, category);
-            inventory.put(itemKey, item);
         } else if (item.getCategory() != category) {
             System.out.println(" item category does not match existing item: " + itemName);
             return;
@@ -120,12 +139,19 @@ public class Stockie {
             return;
         }
 
-        if (item.hasBatch(invoiceKey)) {
+        if (item != null && item.hasBatch(invoiceKey)) {
             System.out.println(" invoice already exists: " + invoiceNumber);
             return;
         }
-        item.addBatch(invoiceKey, invoiceNumber, quantity, unitPrice, expiryDate, upc);
-        printTotals(" added: " + itemName, item);
+        Batch batch = category == ItemCategory.PERISHABLE
+                ? new PerishableBatch(invoiceNumber, quantity, unitPrice, expiryDate, upc)
+                : new NonPerishableBatch(invoiceNumber, quantity, unitPrice, upc);
+        try {
+            commandManager.execute(new AddBatchCommand(itemName, itemKey, sku, category, batch));
+            printTotals(" added: " + itemName, inventory.get(itemKey));
+        } catch (IOException exception) {
+            System.out.println(" unable to save inventory; addition cancelled");
+        }
     }
 
     /** Parses named arguments and rejects unknown, duplicate, empty, or missing fields. */
@@ -208,9 +234,43 @@ public class Stockie {
             System.out.println(" batch not found: " + itemName + " / " + invoiceNumber);
             return;
         }
-        Batch removedBatch = item.removeBatch(invoiceKey);
-        printTotals(" removed: " + removedBatch.getInvoiceNumber(), item);
-        if (item.isEmpty()) inventory.remove(itemKey);
+        try {
+            commandManager.execute(new RemoveBatchCommand(itemName, itemKey, invoiceKey));
+            InventoryItem updatedItem = inventory.get(itemKey);
+            System.out.println(" removed: " + invoiceNumber);
+            if (updatedItem == null) {
+                System.out.println(" total quantity: 0");
+                System.out.println(" inventory cost: 0.00");
+            } else {
+                printTotalsOnly(updatedItem);
+            }
+        } catch (IOException exception) {
+            System.out.println(" unable to save inventory; removal cancelled");
+        }
+    }
+
+    /** Undoes the most recent successful change. */
+    private static void undo() {
+        try {
+            InventoryCommand command = commandManager.undo();
+            printCommandDetails(command.getUndoAction(), command);
+        } catch (IllegalStateException exception) {
+            System.out.println(" nothing to undo");
+        } catch (IOException exception) {
+            System.out.println(" unable to save inventory; undo cancelled");
+        }
+    }
+
+    /** Redoes the most recently undone change. */
+    private static void redo() {
+        try {
+            InventoryCommand command = commandManager.redo();
+            printCommandDetails(command.getRedoAction(), command);
+        } catch (IllegalStateException exception) {
+            System.out.println(" nothing to redo");
+        } catch (IOException exception) {
+            System.out.println(" unable to save inventory; redo cancelled");
+        }
     }
 
     /** Lists items, totals, categories, and batch details. */
@@ -244,8 +304,44 @@ public class Stockie {
     /** Prints an acknowledgement followed by updated totals. */
     private static void printTotals(String acknowledgement, InventoryItem item) {
         System.out.println(acknowledgement);
+        printTotalsOnly(item);
+    }
+
+    /** Prints only the aggregate totals for an item. */
+    private static void printTotalsOnly(InventoryItem item) {
         System.out.println(" total quantity: " + item.getTotalQuantity());
         System.out.println(" inventory cost: " + formatPrice(item.getTotalCost()));
+    }
+
+    /** Prints the affected batch followed by aggregate totals after undo or redo. */
+    private static void printCommandDetails(String action, InventoryCommand command) {
+        Batch batch = command.getAffectedBatch();
+        System.out.println(" " + action + " batch:");
+        System.out.println(" item: " + command.getItemName());
+        System.out.println(" sku: " + command.getSku());
+        System.out.println(" category: " + command.getCategory().name().toLowerCase(Locale.ROOT));
+        System.out.println(" invoice: " + batch.getInvoiceNumber());
+        System.out.println(" quantity: " + batch.getQuantity());
+        System.out.println(" unit price: " + formatPrice(batch.getUnitPrice()));
+        if (batch.getUpc() != null) {
+            System.out.println(" upc: " + batch.getUpc());
+        }
+        if (batch instanceof PerishableBatch) {
+            System.out.println(" expiry date: " + DATE_FORMAT.format(((PerishableBatch) batch).getExpiryDate()));
+        }
+        System.out.println();
+        printCommandTotals(command);
+    }
+
+    /** Prints aggregate totals after an undo or redo operation. */
+    private static void printCommandTotals(InventoryCommand command) {
+        InventoryItem item = inventory.get(command.getItemKey());
+        if (item == null) {
+            System.out.println(" total quantity: 0");
+            System.out.println(" inventory cost: 0.00");
+        } else {
+            printTotalsOnly(item);
+        }
     }
 
     /** Parses a strictly positive quantity. */
@@ -311,8 +407,288 @@ public class Stockie {
     /** Prints a message divider. */
     private static void printDivider() { System.out.println(DIVIDER); }
 
+    /** Abstraction for loading and saving complete inventory snapshots. */
+    private interface InventoryRepository {
+        HashMap<String, InventoryItem> load() throws IOException, ClassNotFoundException;
+        void save(HashMap<String, InventoryItem> snapshot) throws IOException;
+    }
+
+    /** Persists snapshots using an atomic temporary-file replacement. */
+    private static final class FileInventoryRepository implements InventoryRepository {
+        private final Path path;
+
+        private FileInventoryRepository(Path path) {
+            this.path = path;
+        }
+
+        @Override
+        public HashMap<String, InventoryItem> load() throws IOException, ClassNotFoundException {
+            if (!Files.exists(path) || Files.size(path) == 0) {
+                return new HashMap<>();
+            }
+            try (ObjectInputStream input = new ObjectInputStream(Files.newInputStream(path))) {
+                @SuppressWarnings("unchecked")
+                HashMap<String, InventoryItem> snapshot = (HashMap<String, InventoryItem>) input.readObject();
+                return snapshot;
+            }
+        }
+
+        @Override
+        public void save(HashMap<String, InventoryItem> snapshot) throws IOException {
+            Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
+            try (ObjectOutputStream output = new ObjectOutputStream(Files.newOutputStream(temporary))) {
+                output.writeObject(snapshot);
+                output.flush();
+            }
+            Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
+        }
+    }
+
+    /** Owns inventory mutations and creates defensive copies for command history. */
+    private static final class InventoryService {
+        private HashMap<String, InventoryItem> items = new HashMap<>();
+
+        private void load(InventoryRepository repository) throws IOException, ClassNotFoundException {
+            items = deepCopy(repository.load());
+        }
+
+        private InventoryItem get(String itemKey) { return items.get(itemKey); }
+        private boolean isEmpty() { return items.isEmpty(); }
+        private java.util.Collection<InventoryItem> values() { return items.values(); }
+        private int size() { return items.size(); }
+
+        private void addBatch(String itemKey, String itemName, String sku,
+                ItemCategory category, Batch batch) {
+            InventoryItem item = items.get(itemKey);
+            if (item == null) {
+                item = new InventoryItem(itemName, sku, category);
+                items.put(itemKey, item);
+            }
+            item.addBatch(normalize(batch.getInvoiceNumber()), batch.getInvoiceNumber(),
+                    batch.getQuantity(), batch.getUnitPrice(),
+                    batch instanceof PerishableBatch ? ((PerishableBatch) batch).getExpiryDate() : null,
+                    batch.getUpc());
+        }
+
+        private void removeBatch(String itemKey, String invoiceKey) {
+            InventoryItem item = items.get(itemKey);
+            item.removeBatch(invoiceKey);
+            if (item.isEmpty()) {
+                items.remove(itemKey);
+            }
+        }
+
+        private InventoryItem copyItem(String itemKey) {
+            InventoryItem item = items.get(itemKey);
+            return item == null ? null : item.deepCopy();
+        }
+
+        private void restoreItem(String itemKey, InventoryItem item) {
+            if (item == null) {
+                items.remove(itemKey);
+            } else {
+                items.put(itemKey, item.deepCopy());
+            }
+        }
+
+        private HashMap<String, InventoryItem> snapshot() { return deepCopy(items); }
+
+        private static HashMap<String, InventoryItem> deepCopy(Map<String, InventoryItem> source) {
+            HashMap<String, InventoryItem> copy = new HashMap<>();
+            for (Map.Entry<String, InventoryItem> entry : source.entrySet()) {
+                copy.put(entry.getKey(), entry.getValue().deepCopy());
+            }
+            return copy;
+        }
+    }
+
+    /** Executes commands and coordinates persistence with undo and redo stacks. */
+    private static final class CommandManager {
+        private final InventoryService inventory;
+        private final InventoryRepository repository;
+        private final Deque<InventoryCommand> undoStack = new ArrayDeque<>();
+        private final Deque<InventoryCommand> redoStack = new ArrayDeque<>();
+
+        private CommandManager(InventoryService inventory, InventoryRepository repository) {
+            this.inventory = inventory;
+            this.repository = repository;
+        }
+
+        private void execute(InventoryCommand command) throws IOException {
+            command.execute();
+            try {
+                repository.save(inventory.snapshot());
+            } catch (IOException exception) {
+                command.undo();
+                throw exception;
+            }
+            undoStack.push(command);
+            redoStack.clear();
+        }
+
+        private InventoryCommand undo() throws IOException {
+            if (undoStack.isEmpty()) throw new IllegalStateException();
+            InventoryCommand command = undoStack.pop();
+            command.undo();
+            try {
+                repository.save(inventory.snapshot());
+            } catch (IOException exception) {
+                command.execute();
+                undoStack.push(command);
+                throw exception;
+            }
+            redoStack.push(command);
+            return command;
+        }
+
+        private InventoryCommand redo() throws IOException {
+            if (redoStack.isEmpty()) throw new IllegalStateException();
+            InventoryCommand command = redoStack.pop();
+            command.execute();
+            try {
+                repository.save(inventory.snapshot());
+            } catch (IOException exception) {
+                command.undo();
+                redoStack.push(command);
+                throw exception;
+            }
+            undoStack.push(command);
+            return command;
+        }
+    }
+
+    /** Represents one reversible inventory mutation. */
+    private interface InventoryCommand {
+        void execute();
+        void undo();
+        String getUndoAction();
+        String getRedoAction();
+        String getItemKey();
+        String getItemName();
+        String getSku();
+        ItemCategory getCategory();
+        Batch getAffectedBatch();
+    }
+
+    /** Adds a batch and snapshots the previous item for undo. */
+    private static final class AddBatchCommand implements InventoryCommand {
+        private final String itemName;
+        private final String itemKey;
+        private final String sku;
+        private final ItemCategory category;
+        private final Batch batch;
+        private InventoryItem previousItem;
+        private boolean initialized;
+        private boolean executed;
+
+        private AddBatchCommand(String itemName, String itemKey, String sku,
+                ItemCategory category, Batch batch) {
+            this.itemName = itemName;
+            this.itemKey = itemKey;
+            this.sku = sku;
+            this.category = category;
+            this.batch = batch;
+        }
+
+        @Override
+        public void execute() {
+            if (executed) return;
+            if (!initialized) {
+                previousItem = inventory.copyItem(itemKey);
+                initialized = true;
+            }
+            inventory.addBatch(itemKey, itemName, sku, category, batch);
+            executed = true;
+        }
+
+        @Override
+        public void undo() {
+            if (!executed) return;
+            inventory.restoreItem(itemKey, previousItem);
+            executed = false;
+        }
+
+        @Override
+        public String getUndoAction() { return "removed"; }
+
+        @Override
+        public String getRedoAction() { return "added"; }
+
+        @Override
+        public String getItemKey() { return itemKey; }
+
+        @Override
+        public String getItemName() { return itemName; }
+
+        @Override
+        public String getSku() { return sku; }
+
+        @Override
+        public ItemCategory getCategory() { return category; }
+
+        @Override
+        public Batch getAffectedBatch() { return batch; }
+    }
+
+    /** Removes a batch and snapshots the complete item for undo. */
+    private static final class RemoveBatchCommand implements InventoryCommand {
+        private final String itemKey;
+        private final String invoiceKey;
+        private InventoryItem previousItem;
+        private String invoiceNumber;
+        private boolean initialized;
+        private boolean executed;
+
+        private RemoveBatchCommand(String itemName, String itemKey, String invoiceKey) {
+            this.itemKey = itemKey;
+            this.invoiceKey = invoiceKey;
+        }
+
+        @Override
+        public void execute() {
+            if (executed) return;
+            if (!initialized) {
+                previousItem = inventory.copyItem(itemKey);
+                invoiceNumber = previousItem.getBatches().get(invoiceKey).getInvoiceNumber();
+                initialized = true;
+            }
+            inventory.removeBatch(itemKey, invoiceKey);
+            executed = true;
+        }
+
+        @Override
+        public void undo() {
+            if (!executed) return;
+            inventory.restoreItem(itemKey, previousItem);
+            executed = false;
+        }
+
+        @Override
+        public String getUndoAction() { return "added"; }
+
+        @Override
+        public String getRedoAction() { return "removed"; }
+
+        @Override
+        public String getItemKey() { return itemKey; }
+
+        @Override
+        public String getItemName() { return previousItem.getDisplayName(); }
+
+        @Override
+        public String getSku() { return previousItem.getSku(); }
+
+        @Override
+        public ItemCategory getCategory() { return previousItem.getCategory(); }
+
+        @Override
+        public Batch getAffectedBatch() { return previousItem.getBatches().get(invoiceKey); }
+    }
+
     /** Common immutable data for all batches. */
-    private abstract static class Batch {
+    private abstract static class Batch implements Serializable {
+        private static final long serialVersionUID = 1L;
         private final String invoiceNumber;
         private final int quantity;
         private final BigDecimal unitPrice;
@@ -353,7 +729,8 @@ public class Stockie {
     }
 
     /** Mutable aggregate for one item and its invoice-keyed batches. */
-    private static final class InventoryItem {
+    private static final class InventoryItem implements Serializable {
+        private static final long serialVersionUID = 1L;
         private final String displayName;
         private String sku;
         private final ItemCategory category;
@@ -395,5 +772,22 @@ public class Stockie {
         private Map<String, Batch> getBatches() { return batches; }
         private int getTotalQuantity() { return totalQuantity; }
         private BigDecimal getTotalCost() { return totalCost; }
+
+        /** Creates a defensive copy including every batch and aggregate total. */
+        private InventoryItem deepCopy() {
+            InventoryItem copy = new InventoryItem(displayName, sku, category);
+            for (Map.Entry<String, Batch> entry : batches.entrySet()) {
+                Batch batch = entry.getValue();
+                Batch batchCopy = batch instanceof PerishableBatch
+                        ? new PerishableBatch(batch.getInvoiceNumber(), batch.getQuantity(),
+                                batch.getUnitPrice(), ((PerishableBatch) batch).getExpiryDate(), batch.getUpc())
+                        : new NonPerishableBatch(batch.getInvoiceNumber(), batch.getQuantity(),
+                                batch.getUnitPrice(), batch.getUpc());
+                copy.batches.put(entry.getKey(), batchCopy);
+            }
+            copy.totalQuantity = totalQuantity;
+            copy.totalCost = totalCost;
+            return copy;
+        }
     }
 }
