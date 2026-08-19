@@ -11,7 +11,7 @@ Verify that Stockie tracks invoice batches, updates totals after additions and r
 add --item book --sku SKU001 --invoice INV001 --quantity 10 --price 12.50 --expiry 31-12-2026 --upc UPC001
 list
 add --item book --sku SKU001 --invoice INV002 --quantity 5 --price 15.00 --expiry 30-11-2026
-remove book INV002
+remove --item book --invoice INV002
 bye
 ```
 
@@ -94,7 +94,7 @@ Verify that item names may contain whitespace when adding and removing a batch.
 ### Inputs
 ```text
 add --item red book --sku SKU-RED --invoice INV001 --quantity 2 --price 3.25
-remove red book INV001
+remove --item red book --invoice INV001
 bye
 ```
 
@@ -133,7 +133,7 @@ Verify that invoice numbers are unique per item and that removing the final batc
 add --item Book --sku SKU-BOOK --invoice INV001 --quantity 1 --price 2.00 --expiry 31-12-2026
 add --item book --sku SKU-BOOK --invoice inv001 --quantity 3 --price 4.00 --expiry 30-11-2026
 add --item book --sku SKU-BOOK --invoice INV002 --quantity 3 --price 4.00
-remove BOOK INV001
+remove --item BOOK --invoice INV001
 list
 bye
 ```

@@ -8,9 +8,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.nio.file.Files;
@@ -18,8 +18,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /** Starts the Stockie chatbot application. */
 public class Stockie {
@@ -37,15 +35,17 @@ public class Stockie {
             System.getProperty("stockie.data.file", "stockie-inventory.dat")));
     /** Coordinates command execution and the undo/redo history. */
     private static final CommandManager commandManager = new CommandManager(inventory, repository);
-    /** Parses a remove command whose final token is an invoice number. */
-    private static final Pattern REMOVE_ARGUMENTS = Pattern.compile("^(.+)\\s+(\\S+)$");
-
     /** Item categories determine which immutable batch subtype an inventory accepts. */
     private enum ItemCategory { PERISHABLE, NON_PERISHABLE }
-    /** Required fields for adding an item to inventory. */
-    private static final String[] REQUIRED_FIELDS = {"item", "sku", "invoice", "quantity", "price"};
-    /** Optional fields for adding an item to inventory */
-    private static final String[] OPTIONAL_FIELDS = {"expiry", "upc"};
+    /** Required named fields accepted by the add command. */
+    private static final List<String> ADD_REQUIRED_FIELDS =
+            List.of("item", "sku", "invoice", "quantity", "price");
+    /** All named fields accepted by the add command, including optional fields. */
+    private static final List<String> ADD_SUPPORTED_FIELDS =
+            List.of("item", "sku", "invoice", "quantity", "price", "expiry", "upc");
+    /** Required and supported named fields accepted by the remove command. */
+    private static final List<String> REMOVE_FIELDS = List.of("item", "invoice");
+
 
     /** Greets the user, processes commands, and exits on {@code bye}. */
     public static void main(String[] args) {
@@ -92,13 +92,35 @@ public class Stockie {
         case "list": listItems(arguments); break;
         case "undo": undo(); break;
         case "redo": redo(); break;
-        default: System.out.println(" " + input); break;
+        case "help": printHelp(arguments); break;
+        default:
+            System.out.println(" I'm not too sure what you mean, did you use the right command?");
+            System.out.println(" Type \"help\" to find the list of commands available");
+            break;
         }
+    }
+
+    /** Prints the commands supported by Stockie. */
+    private static void printHelp(String arguments) {
+        if (!arguments.isEmpty()) {
+            System.out.println(" usage: help");
+            return;
+        }
+        System.out.println(" Available commands:");
+        System.out.println(" add --item <name> --sku <sku> --invoice <invoice>"
+                + " --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]");
+        System.out.println(" remove --item <name> --invoice <invoice>");
+        System.out.println(" list");
+        System.out.println(" undo");
+        System.out.println(" redo");
+        System.out.println(" help");
+        System.out.println(" bye");
     }
 
     /** Adds a batch using order-independent {@code --field value} arguments. */
     private static void addBatch(String arguments, Scanner scanner) {
-        Map<String, String> fields = parseNamedArguments(arguments);
+        Map<String, String> fields = parseNamedArguments(arguments,
+                ADD_REQUIRED_FIELDS, ADD_SUPPORTED_FIELDS);
         if (fields == null) {
             return;
         }
@@ -154,8 +176,9 @@ public class Stockie {
         }
     }
 
-    /** Parses named arguments and rejects unknown, duplicate, empty, or missing fields. */
-    private static Map<String, String> parseNamedArguments(String arguments) {
+    /** Parses named arguments using command-specific required and supported fields. */
+    private static Map<String, String> parseNamedArguments(String arguments,
+            List<String> requiredFields, List<String> supportedFields) {
         String[] tokens = arguments.trim().isEmpty() ? new String[0] : arguments.trim().split("\\s+");
         HashMap<String, String> values = new HashMap<>();
         String currentKey = null;
@@ -167,7 +190,7 @@ public class Stockie {
                     return null;
                 }
                 currentKey = token.substring(2).toLowerCase(Locale.ROOT);
-                if (!isSupportedArgument(currentKey)) {
+                if (!isSupportedArgument(currentKey, supportedFields)) {
                     System.out.println(" unknown field: --" + currentKey);
                     return null;
                 }
@@ -185,7 +208,7 @@ public class Stockie {
         }
 
         StringBuilder missing = new StringBuilder();
-        for (String field : REQUIRED_FIELDS) {
+        for (String field : requiredFields) {
             if (!values.containsKey(field)) {
                 if (missing.length() > 0) missing.append(", ");
                 missing.append("--").append(field);
@@ -212,21 +235,17 @@ public class Stockie {
         return true;
     }
 
-    /** Returns whether a named field is supported by the add command. */
-    private static boolean isSupportedArgument(String key) {
-        return Arrays.stream(REQUIRED_FIELDS).anyMatch(key::equals) 
-        || Arrays.stream(OPTIONAL_FIELDS).anyMatch(key::equals);
+    /** Returns whether a named field is included in the command's supported fields. */
+    private static boolean isSupportedArgument(String key, List<String> supportedFields) {
+        return supportedFields.contains(key);
     }
 
-    /** Removes an entire batch using {@code remove item invoice}. */
+    /** Removes an entire batch using {@code --item} and {@code --invoice} arguments. */
     private static void removeBatch(String arguments) {
-        Matcher matcher = REMOVE_ARGUMENTS.matcher(arguments);
-        if (!matcher.matches()) {
-            System.out.println(" usage: remove <item> <invoice>");
-            return;
-        }
-        String itemName = matcher.group(1).trim();
-        String invoiceNumber = matcher.group(2);
+        Map<String, String> fields = parseNamedArguments(arguments, REMOVE_FIELDS, REMOVE_FIELDS);
+        if (fields == null) return;
+        String itemName = fields.get("item");
+        String invoiceNumber = fields.get("invoice");
         String itemKey = normalize(itemName);
         String invoiceKey = normalize(invoiceNumber);
         InventoryItem item = inventory.get(itemKey);
