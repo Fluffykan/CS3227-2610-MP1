@@ -1,6 +1,6 @@
 # UI Test Results
 
-Run: 2026-08-20T21:33:12
+Run: 2026-08-20T23:17:54
 
 ## Test Case: add and recall inventory batches
 **Aim:** Verify that Stockie tracks invoice batches, updates totals after additions and recalls, lists batch details, and exits with `bye`.

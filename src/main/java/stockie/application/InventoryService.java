@@ -4,12 +4,14 @@ import stockie.model.Batch;
 import stockie.model.InventoryItem;
 import stockie.model.ItemCategory;
 import stockie.model.PerishableBatch;
+import stockie.application.result.SoldBatch;
 import stockie.storage.InventoryRepository;
 import stockie.util.TextNormalizer;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 /** Owns inventory mutations and creates defensive copies for command history. */
 public final class InventoryService {
@@ -45,6 +47,11 @@ public final class InventoryService {
     public void recallBatch(String itemKey, String invoiceKey) {
         InventoryItem item = items.get(itemKey);
         item.recallBatch(invoiceKey);
+    }
+
+    /** Sells quantities from the specified item according to its category's batch ordering. */
+    public List<SoldBatch> sell(String itemKey, int quantity) {
+        return items.get(itemKey).sell(quantity);
     }
 
     /** Removes an entire item and its batches using its normalized item name. */

@@ -22,6 +22,8 @@ import stockie.application.result.FindQueryResult;
 import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
 import stockie.application.result.RemoveItemResult;
+import stockie.application.result.SellItemResult;
+import stockie.application.result.SoldBatch;
 import stockie.application.result.UpdateSkuResult;
 import stockie.command.UpdateSkuCommand;
 import stockie.model.Batch;
@@ -53,6 +55,11 @@ public final class ConsoleUi {
     private static final List<String> REMOVE_SUPPORTED_FIELDS = List.of("item", "sku");
     /** Required field groups for the item removal command. */
     private static final List<List<String>> REMOVE_REQUIRED_FIELDS = List.of(List.of("item", "sku"));
+    /** Fields accepted by the sell command; one identifier and a quantity are required. */
+    private static final List<String> SELL_SUPPORTED_FIELDS = List.of("item", "sku", "quantity");
+    /** Required field groups for the sell command. */
+    private static final List<List<String>> SELL_REQUIRED_FIELDS =
+            List.of(List.of("item", "sku"), List.of("quantity"));
     /** Fields accepted by the SKU update command. */
     private static final List<String> UPDATE_SKU_SUPPORTED_FIELDS =
             List.of("item", "current-sku", "sku");
@@ -106,6 +113,7 @@ public final class ConsoleUi {
         case "add": addBatch(arguments, scanner); break;
         case "recall": recallBatch(arguments); break;
         case "remove": removeItem(arguments, scanner); break;
+        case "sell": sellItem(arguments); break;
         case "update-sku": updateSku(arguments); break;
         case "list": list(arguments); break;
         case "find": find(arguments); break;
@@ -130,6 +138,7 @@ public final class ConsoleUi {
                 + " --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]");
         System.out.println(" recall (--item <name> | --sku <sku>) --invoice <invoice>");
         System.out.println(" remove (--item <name> | --sku <sku>)");
+        System.out.println(" sell (--item <name> | --sku <sku>) --quantity <quantity>");
         System.out.println(" update-sku (--item <name> | --current-sku <old sku>) --sku <new sku>");
         System.out.println(" list [depleted | expired | expiring-in <days>]");
         System.out.println(" find --item <name> | --sku <sku>");
@@ -310,6 +319,31 @@ public final class ConsoleUi {
             return;
         }
         System.out.println(" removed item: " + result.item().getDisplayName());
+    }
+
+    /** Sells stock selected by item name or SKU. */
+    private void sellItem(String arguments) {
+        Map<String, String> fields = parseNamedArguments(arguments,
+                SELL_REQUIRED_FIELDS, SELL_SUPPORTED_FIELDS);
+        if (fields == null) return;
+        if (fields.containsKey("item") == fields.containsKey("sku")) {
+            System.out.println(" usage: sell (--item <name> | --sku <sku>) --quantity <quantity>");
+            return;
+        }
+        Integer quantity = parsePositiveQuantity(fields.get("quantity"));
+        if (quantity == null) return;
+        SellItemResult result = fields.containsKey("item")
+                ? controller.sellItemByName(fields.get("item"), quantity)
+                : controller.sellItemBySku(fields.get("sku"), quantity);
+        if (result.message() != null) {
+            System.out.println(result.message());
+            return;
+        }
+        System.out.println(" sold: " + quantity + " of " + result.item().getDisplayName());
+        for (SoldBatch batch : result.soldBatches()) {
+            System.out.println(" invoice " + batch.invoiceNumber() + ": quantity " + batch.quantity());
+        }
+        printTotalsOnly(result.item());
     }
 
     /** Updates an item's SKU after selecting it by name or its current SKU. */

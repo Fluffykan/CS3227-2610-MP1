@@ -709,8 +709,9 @@ ____________________________________________________________
  add --item <name> --sku <sku> --invoice <invoice> --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]
  recall (--item <name> | --sku <sku>) --invoice <invoice>
  remove (--item <name> | --sku <sku>)
+ sell (--item <name> | --sku <sku>) --quantity <quantity>
  update-sku (--item <name> | --current-sku <old sku>) --sku <new sku>
- list [depleted]
+ list [depleted | expired | expiring-in <days>]
  find --item <name> | --sku <sku>
  undo
  redo
@@ -722,6 +723,84 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
  No items in list
+____________________________________________________________
+Bye. Hope to see you again soon!
+____________________________________________________________
+```
+
+## Test Case: sell batches in category order
+### Aim
+Verify that selling uses earliest-expiring batches for perishables, invoice order for non-perishables,
+updates aggregate totals, and rejects insufficient stock, unknown items, and invalid quantities.
+
+### Inputs
+```text
+add --item milk --sku SKU-MILK --invoice INV-LATE --quantity 3 --price 3.00 --expiry 31-12-2099
+add --item milk --sku SKU-MILK --invoice INV-EARLY --quantity 2 --price 2.00 --expiry 30-11-2099
+sell --item milk --quantity 4
+add --item rice --sku SKU-RICE --invoice INV-B --quantity 4 --price 2.00
+add --item rice --sku SKU-RICE --invoice INV-A --quantity 3 --price 1.50
+sell --sku SKU-RICE --quantity 5
+sell --sku SKU-RICE --quantity 3
+sell --sku SKU-NONE --quantity 1
+sell --item milk --quantity -1
+bye
+```
+
+### Expected Output
+```text
+____________________________________________________________
+ ____  _             _    _      
+/ ___|| |_ ___   ___| | _(_) ___ 
+\___ \| __/ _ \ / __| |/ / |/ _ \
+ ___) | || (_) | (__|   <| |  __/
+|____/ \__\___/ \___|_|\_\_|\___|
+
+Hello! I'm Stockie.
+What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ added: milk
+ total quantity: 3
+ inventory cost: 9.00
+____________________________________________________________
+____________________________________________________________
+ added: milk
+ total quantity: 5
+ inventory cost: 13.00
+____________________________________________________________
+____________________________________________________________
+ sold: 4 of milk
+ invoice INV-EARLY: quantity 2
+ invoice INV-LATE: quantity 2
+ total quantity: 1
+ inventory cost: 3.00
+____________________________________________________________
+____________________________________________________________
+ added: rice
+ total quantity: 4
+ inventory cost: 8.00
+____________________________________________________________
+____________________________________________________________
+ added: rice
+ total quantity: 7
+ inventory cost: 12.50
+____________________________________________________________
+____________________________________________________________
+ sold: 5 of rice
+ invoice INV-A: quantity 3
+ invoice INV-B: quantity 2
+ total quantity: 2
+ inventory cost: 4.00
+____________________________________________________________
+____________________________________________________________
+ insufficient stock: rice
+____________________________________________________________
+____________________________________________________________
+ item not found: SKU-NONE
+____________________________________________________________
+____________________________________________________________
+ quantity must be a positive whole number
 ____________________________________________________________
 Bye. Hope to see you again soon!
 ____________________________________________________________

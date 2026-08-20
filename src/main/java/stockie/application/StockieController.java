@@ -13,12 +13,15 @@ import stockie.application.result.FindQueryResult;
 import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
 import stockie.application.result.RemoveItemResult;
+import stockie.application.result.SellItemResult;
+import stockie.application.result.SoldBatch;
 import stockie.application.result.UpdateSkuResult;
 import stockie.command.AddBatchCommand;
 import stockie.command.CommandManager;
 import stockie.command.InventoryCommand;
 import stockie.command.RecallBatchCommand;
 import stockie.command.RemoveItemCommand;
+import stockie.command.SellItemCommand;
 import stockie.command.UpdateSkuCommand;
 import stockie.model.Batch;
 import stockie.model.InventoryItem;
@@ -201,6 +204,34 @@ public final class StockieController {
         List<ExpiringItem> items = queries.listExpired(LocalDate.now());
         return items.isEmpty() ? new ExpiringBatchQueryResult(items, " No expired batches in list")
                 : new ExpiringBatchQueryResult(items, null);
+    }
+
+    /** Sells stock after locating an item by its display name. */
+    public SellItemResult sellItemByName(String itemName, int quantity) {
+        return sellItem(TextNormalizer.normalize(itemName), itemName, quantity);
+    }
+
+    /** Sells stock after locating an item by its SKU. */
+    public SellItemResult sellItemBySku(String sku, int quantity) {
+        InventoryItem item = inventory.getBySku(TextNormalizer.normalize(sku));
+        if (item == null) return new SellItemResult(null, List.of(), " item not found: " + sku);
+        return sellItem(TextNormalizer.normalize(item.getDisplayName()), sku, quantity);
+    }
+
+    /** Validates stock availability, then executes a reversible sale. */
+    private SellItemResult sellItem(String itemKey, String identifier, int quantity) {
+        InventoryItem item = inventory.get(itemKey);
+        if (item == null) return new SellItemResult(null, List.of(), " item not found: " + identifier);
+        if (quantity > item.getTotalQuantity()) {
+            return new SellItemResult(null, List.of(), " insufficient stock: " + item.getDisplayName());
+        }
+        SellItemCommand command = new SellItemCommand(inventory, itemKey, quantity);
+        try {
+            commandManager.execute(command);
+            return new SellItemResult(inventory.get(itemKey), command.getSoldBatches(), null);
+        } catch (IOException exception) {
+            return new SellItemResult(null, List.of(), " unable to save inventory; sale cancelled");
+        }
     }
 
     /** Looks up an item by display name. */
