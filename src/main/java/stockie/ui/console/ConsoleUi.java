@@ -19,6 +19,7 @@ import stockie.application.result.CommandResult;
 import stockie.application.result.FindQueryResult;
 import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
+import stockie.application.result.RemoveItemResult;
 import stockie.model.Batch;
 import stockie.model.InventoryItem;
 import stockie.model.PerishableBatch;
@@ -40,6 +41,8 @@ public final class ConsoleUi {
             List.of("item", "sku", "invoice", "quantity", "price", "expiry", "upc");
     /** Fields accepted by the recall command; one identifier and an invoice are required. */
     private static final List<String> RECALL_SUPPORTED_FIELDS = List.of("item", "sku", "invoice");
+    /** Fields accepted by the item removal command; exactly one identifier is required. */
+    private static final List<String> REMOVE_SUPPORTED_FIELDS = List.of("item", "sku");
     /** Fields accepted by the find command; exactly one must be supplied. */
     private static final List<String> FIND_SUPPORTED_FIELDS = List.of("item", "sku");
 
@@ -89,6 +92,7 @@ public final class ConsoleUi {
         switch (command) {
         case "add": addBatch(arguments, scanner); break;
         case "recall": recallBatch(arguments); break;
+        case "remove": removeItem(arguments, scanner); break;
         case "list": list(arguments); break;
         case "find": find(arguments); break;
         case "undo": undo(); break;
@@ -111,6 +115,7 @@ public final class ConsoleUi {
         System.out.println(" add --item <name> --sku <sku> --invoice <invoice>"
                 + " --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]");
         System.out.println(" recall (--item <name> | --sku <sku>) --invoice <invoice>");
+        System.out.println(" remove (--item <name> | --sku <sku>)");
         System.out.println(" list [depleted]");
         System.out.println(" find --item <name> | --sku <sku>");
         System.out.println(" undo");
@@ -243,6 +248,38 @@ public final class ConsoleUi {
         }
     }
 
+    /** Confirms and removes every batch belonging to one item. */
+    private void removeItem(String arguments, Scanner scanner) {
+        Map<String, String> fields = parseNamedArguments(arguments, List.of(), REMOVE_SUPPORTED_FIELDS);
+        if (fields == null) return;
+        if (fields.containsKey("item") == fields.containsKey("sku")) {
+            System.out.println(" usage: remove (--item <name> | --sku <sku>)");
+            return;
+        }
+        InventoryItem item = fields.containsKey("item")
+                ? controller.findByName(fields.get("item")).item()
+                : controller.findBySku(fields.get("sku")).item();
+        if (item == null) {
+            String identifier = fields.containsKey("item") ? fields.get("item") : fields.get("sku");
+            System.out.println(" item not found: " + identifier);
+            return;
+        }
+        System.out.println(" warning: this will remove " + item.getDisplayName()
+                + " and all of its batches. Continue? (yes/no)");
+        if (!scanner.hasNextLine() || !scanner.nextLine().trim().equalsIgnoreCase("yes")) {
+            System.out.println(" item removal cancelled");
+            return;
+        }
+        RemoveItemResult result = fields.containsKey("item")
+                ? controller.removeItemByName(fields.get("item"))
+                : controller.removeItemBySku(fields.get("sku"));
+        if (result.message() != null) {
+            System.out.println(result.message());
+            return;
+        }
+        System.out.println(" removed item: " + result.item().getDisplayName());
+    }
+
     /** Parses a list request before delegating its UI-independent part to the controller. */
     private void list(String arguments) {
         if (arguments.isEmpty()) {
@@ -338,6 +375,12 @@ public final class ConsoleUi {
 
     /** Prints the affected batch followed by aggregate totals after undo or redo. */
     private void printCommandDetails(String action, InventoryCommand command) {
+        if (command.getAffectedItem() != null) {
+            System.out.println(" " + action + " item:");
+            System.out.println(" item: " + command.getItemName());
+            printItemDetails(command.getAffectedItem());
+            return;
+        }
         Batch batch = command.getAffectedBatch();
         System.out.println(" " + action + " batch:");
         System.out.println(" item: " + command.getItemName());

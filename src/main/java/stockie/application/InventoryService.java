@@ -47,6 +47,14 @@ public final class InventoryService {
         item.recallBatch(invoiceKey);
     }
 
+    /** Removes an entire item and its batches using its normalized item name. */
+    public void removeItem(String itemKey) {
+        InventoryItem item = items.remove(itemKey);
+        if (item != null) {
+            itemsBySku.remove(TextNormalizer.normalize(item.getSku()));
+        }
+    }
+
     public InventoryItem copyItem(String itemKey) {
         InventoryItem item = items.get(itemKey);
         return item == null ? null : item.deepCopy();

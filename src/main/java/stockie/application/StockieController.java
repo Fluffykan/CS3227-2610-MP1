@@ -9,10 +9,12 @@ import stockie.application.result.CommandResult;
 import stockie.application.result.FindQueryResult;
 import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
+import stockie.application.result.RemoveItemResult;
 import stockie.command.AddBatchCommand;
 import stockie.command.CommandManager;
 import stockie.command.InventoryCommand;
 import stockie.command.RecallBatchCommand;
+import stockie.command.RemoveItemCommand;
 import stockie.model.Batch;
 import stockie.model.InventoryItem;
 import stockie.model.ItemCategory;
@@ -105,6 +107,36 @@ public final class StockieController {
             return new RecallBatchResult(inventory.get(itemKey), null);
         } catch (IOException exception) {
             return new RecallBatchResult(null, " unable to save inventory; recall cancelled");
+        }
+    }
+
+    /** Removes an entire item identified by its display name. */
+    public RemoveItemResult removeItemByName(String itemName) {
+        String itemKey = TextNormalizer.normalize(itemName);
+        return removeItem(itemKey, itemName);
+    }
+
+    /** Removes an entire item identified by its SKU. */
+    public RemoveItemResult removeItemBySku(String sku) {
+        InventoryItem item = inventory.getBySku(TextNormalizer.normalize(sku));
+        if (item == null) {
+            return new RemoveItemResult(null, " item not found: " + sku);
+        }
+        return removeItem(TextNormalizer.normalize(item.getDisplayName()), sku);
+    }
+
+    /** Executes the reversible removal for an item already selected by name or SKU. */
+    private RemoveItemResult removeItem(String itemKey, String identifier) {
+        InventoryItem item = inventory.get(itemKey);
+        if (item == null) {
+            return new RemoveItemResult(null, " item not found: " + identifier);
+        }
+        RemoveItemCommand command = new RemoveItemCommand(inventory, itemKey);
+        try {
+            commandManager.execute(command);
+            return new RemoveItemResult(command.getAffectedItem(), null);
+        } catch (IOException exception) {
+            return new RemoveItemResult(null, " unable to save inventory; item removal cancelled");
         }
     }
 

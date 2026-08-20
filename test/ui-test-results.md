@@ -1,9 +1,9 @@
 # UI Test Results
 
-Run: 2026-08-20T16:41:01
+Run: 2026-08-20T18:42:07
 
 ## Test Case: add and recall inventory batches
-**Aim:** Verify that Stockie tracks invoice batches, updates totals after additions and removal, lists batch details, and exits with `bye`.
+**Aim:** Verify that Stockie tracks invoice batches, updates totals after additions and recalls, lists batch details, and exits with `bye`.
 
 **Status:** PASS
 
@@ -530,6 +530,7 @@ ____________________________________________________________
  Available commands:
  add --item <name> --sku <sku> --invoice <invoice> --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]
  recall (--item <name> | --sku <sku>) --invoice <invoice>
+ remove (--item <name> | --sku <sku>)
  list [depleted]
  find --item <name> | --sku <sku>
  undo
@@ -542,6 +543,78 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
  No items in list
+____________________________________________________________
+Bye. Hope to see you again soon!
+____________________________________________________________
+```
+
+## Test Case: remove an item with confirmation and history
+**Aim:** Verify that item removal requires confirmation, accepts both identifiers, removes every batch, and can be undone and redone.
+
+**Status:** PASS
+
+### Console Input
+```text
+add --item coffee --sku SKU-COFFEE --invoice INV001 --quantity 2 --price 3.50
+add --item coffee --sku SKU-COFFEE --invoice INV002 --quantity 1 --price 4.00
+remove --sku SKU-COFFEE
+no
+remove --item coffee
+yes
+undo
+redo
+bye
+```
+
+### Actual Console Output
+```text
+____________________________________________________________
+ ____  _             _    _      
+/ ___|| |_ ___   ___| | _(_) ___ 
+\___ \| __/ _ \ / __| |/ / |/ _ \
+ ___) | || (_) | (__|   <| |  __/
+|____/ \__\___/ \___|_|\_\_|\___|
+
+Hello! I'm Stockie.
+What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ added: coffee
+ total quantity: 2
+ inventory cost: 7.00
+____________________________________________________________
+____________________________________________________________
+ added: coffee
+ total quantity: 3
+ inventory cost: 11.00
+____________________________________________________________
+____________________________________________________________
+ warning: this will remove coffee and all of its batches. Continue? (yes/no)
+ item removal cancelled
+____________________________________________________________
+____________________________________________________________
+ warning: this will remove coffee and all of its batches. Continue? (yes/no)
+ removed item: coffee
+____________________________________________________________
+____________________________________________________________
+ restored item:
+ item: coffee
+    sku: SKU-COFFEE
+    category: non_perishable
+    total quantity: 3
+    inventory cost: 11.00
+    invoice INV002: quantity 1, unit price 4.00
+    invoice INV001: quantity 2, unit price 3.50
+____________________________________________________________
+____________________________________________________________
+ removed item:
+ item: coffee
+    sku: SKU-COFFEE
+    category: non_perishable
+    total quantity: 3
+    inventory cost: 11.00
+    invoice INV002: quantity 1, unit price 4.00
+    invoice INV001: quantity 2, unit price 3.50
 ____________________________________________________________
 Bye. Hope to see you again soon!
 ____________________________________________________________
