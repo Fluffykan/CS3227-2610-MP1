@@ -16,7 +16,7 @@ RESULTS_PATH = Path("test/ui-test-results.md")
 SOURCE_DIRECTORY = Path("src/main/java")
 CLASS_DIRECTORY = Path("_temp/ui-test-classes")
 TEST_DATA_DIRECTORY = Path("_temp/ui-test-data")
-ENTRY_POINT = "Stockie"
+ENTRY_POINT = "stockie.Stockie"
 TEST_TIMEOUT_SECONDS = 10
 RELATIVE_DATE_PATTERN = "{{TODAY_PLUS_2_YEARS}}"
 

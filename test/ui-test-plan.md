@@ -4,16 +4,16 @@ The test runner starts a new Stockie process for every case. Expected output is 
 
 The input placeholder `{{TODAY_PLUS_2_YEARS}}` is replaced with a date two years after the test execution date, formatted as `dd-MM-yyyy`.
 
-## Test Case: add and remove inventory batches
+## Test Case: add and recall inventory batches
 ### Aim
-Verify that Stockie tracks invoice batches, updates totals after additions and removal, lists batch details, and exits with `bye`.
+Verify that Stockie tracks invoice batches, updates totals after additions and recalls, lists batch details, and exits with `bye`.
 
 ### Inputs
 ```text
 add --item book --sku SKU001 --invoice INV001 --quantity 10 --price 12.50 --expiry 31-12-2026 --upc UPC001
 list
 add --item book --sku SKU001 --invoice INV002 --quantity 5 --price 15.00 --expiry 30-11-2026
-remove --item book --invoice INV002
+recall --item book --invoice INV002
 bye
 ```
 
@@ -48,9 +48,82 @@ ____________________________________________________________
  inventory cost: 200.00
 ____________________________________________________________
 ____________________________________________________________
- removed: INV002
+ recalled: INV002
  total quantity: 10
  inventory cost: 125.00
+____________________________________________________________
+Bye. Hope to see you again soon!
+____________________________________________________________
+```
+
+## Test Case: list filtering and SKU ordering
+### Aim
+Verify that `list depleted` shows only zero-quantity items, that both list modes are sorted by SKU, and that finding a depleted item by SKU still works.
+
+### Inputs
+```text
+add --item Zebra --sku SKU-Z --invoice INV-Z --quantity 1 --price 2.00
+add --item Alpha --sku SKU-A --invoice INV-A --quantity 2 --price 3.00
+recall --sku SKU-A --invoice INV-A
+list depleted
+list
+find --sku SKU-A
+bye
+```
+
+### Expected Output
+```text
+____________________________________________________________
+ ____  _             _    _      
+/ ___|| |_ ___   ___| | _(_) ___ 
+\___ \| __/ _ \ / __| |/ / |/ _ \
+ ___) | || (_) | (__|   <| |  __/
+|____/ \__\___/ \___|_|\_\_|\___|
+
+Hello! I'm Stockie.
+What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ added: Zebra
+ total quantity: 1
+ inventory cost: 2.00
+____________________________________________________________
+____________________________________________________________
+ added: Alpha
+ total quantity: 2
+ inventory cost: 6.00
+____________________________________________________________
+____________________________________________________________
+ recalled: INV-A
+ total quantity: 0
+ inventory cost: 0.00
+ out of stock: Alpha
+____________________________________________________________
+____________________________________________________________
+ 1. Alpha
+    sku: SKU-A
+    category: non_perishable
+    total quantity: 0
+    inventory cost: 0.00
+____________________________________________________________
+____________________________________________________________
+ 1. Alpha
+    sku: SKU-A
+    category: non_perishable
+    total quantity: 0
+    inventory cost: 0.00
+ 2. Zebra
+    sku: SKU-Z
+    category: non_perishable
+    total quantity: 1
+    inventory cost: 2.00
+    invoice INV-Z: quantity 1, unit price 2.00
+____________________________________________________________
+____________________________________________________________
+    sku: SKU-A
+    category: non_perishable
+    total quantity: 0
+    inventory cost: 0.00
 ____________________________________________________________
 Bye. Hope to see you again soon!
 ____________________________________________________________
@@ -158,7 +231,7 @@ Bye. Hope to see you again soon!
 ____________________________________________________________
 ```
 
-## Test Case: invalid remove and add fields
+## Test Case: invalid recall and add fields
 ### Aim
 Verify that missing fields are reported accurately and invalid commands do not alter inventory.
 
@@ -166,8 +239,9 @@ Verify that missing fields are reported accurately and invalid commands do not a
 ```text
 add
 add --item apples
-remove
-remove --item apples
+recall
+recall --item apples
+recall --item apples --sku SKU-APPLES --invoice INV-APPLES
 list
 bye
 ```
@@ -191,10 +265,13 @@ ____________________________________________________________
  missing required fields: --sku, --invoice, --quantity, --price
 ____________________________________________________________
 ____________________________________________________________
- missing required fields: --item, --invoice
+ missing required fields: --invoice
 ____________________________________________________________
 ____________________________________________________________
  missing required fields: --invoice
+____________________________________________________________
+____________________________________________________________
+ usage: recall (--item <name> | --sku <sku>) --invoice <invoice>
 ____________________________________________________________
 ____________________________________________________________
  No items in list
@@ -205,7 +282,7 @@ ____________________________________________________________
 
 ## Test Case: undo and redo inventory changes
 ### Aim
-Verify undo/redo for additions and removals, LIFO ordering, complete batch restoration, and clearing redo history after a new change.
+Verify undo/redo for additions and recalls, LIFO ordering, complete batch restoration, and clearing redo history after a new change.
 
 ### Inputs
 ```text
@@ -215,7 +292,7 @@ list
 redo
 list
 add --item milk --sku SKU-MILK --invoice INV002 --quantity 2 --price 3.25 --expiry 31-12-2099 --upc UPC-MILK
-remove --item milk --invoice INV002
+recall --item milk --invoice INV002
 undo
 list
 redo
@@ -288,7 +365,7 @@ ____________________________________________________________
  inventory cost: 6.50
 ____________________________________________________________
 ____________________________________________________________
- removed: INV002
+ recalled: INV002
  total quantity: 0
  inventory cost: 0.00
  out of stock: milk
@@ -322,7 +399,7 @@ ____________________________________________________________
     invoice INV002: quantity 2, unit price 3.25, upc UPC-MILK, expiry date 31-12-2099
 ____________________________________________________________
 ____________________________________________________________
- removed batch:
+ recalled batch:
  item: milk
  sku: SKU-MILK
  category: perishable
@@ -407,7 +484,7 @@ redo
 add --item rice --sku SKU-RICE --invoice INV001 --quantity 0 --price 2.00
 undo
 redo
-remove --item rice --invoice INV001
+recall --item rice --invoice INV001
 help
 help extra
 list
@@ -447,8 +524,8 @@ ____________________________________________________________
 ____________________________________________________________
  Available commands:
  add --item <name> --sku <sku> --invoice <invoice> --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]
- remove --item <name> --invoice <invoice>
- list
+ recall (--item <name> | --sku <sku>) --invoice <invoice>
+ list [depleted]
  find --item <name> | --sku <sku>
  undo
  redo
@@ -654,12 +731,12 @@ ____________________________________________________________
 
 ## Test Case: item names with spaces
 ### Aim
-Verify that item names may contain whitespace when adding and removing a batch.
+Verify that item names may contain whitespace when adding and recalling a batch.
 
 ### Inputs
 ```text
 add --item red book --sku SKU-RED --invoice INV001 --quantity 2 --price 3.25
-remove --item red book --invoice INV001
+recall --item red book --invoice INV001
 bye
 ```
 
@@ -681,7 +758,7 @@ ____________________________________________________________
  inventory cost: 6.50
 ____________________________________________________________
 ____________________________________________________________
- removed: INV001
+ recalled: INV001
  total quantity: 0
  inventory cost: 0.00
  out of stock: red book
@@ -692,14 +769,14 @@ ____________________________________________________________
 
 ## Test Case: duplicate invoice and empty inventory
 ### Aim
-Verify that invoice numbers are unique per item and that removing the final batch leaves an empty inventory.
+Verify that invoice numbers are unique per item and that recalling the final batch leaves an empty inventory.
 
 ### Inputs
 ```text
 add --item Book --sku SKU-BOOK --invoice INV001 --quantity 1 --price 2.00 --expiry 31-12-2026
 add --item book --sku SKU-BOOK --invoice inv001 --quantity 3 --price 4.00 --expiry 30-11-2026
 add --item book --sku SKU-BOOK --invoice INV002 --quantity 3 --price 4.00
-remove --item BOOK --invoice INV001
+recall --item BOOK --invoice INV001
 list
 bye
 ```
@@ -728,7 +805,7 @@ ____________________________________________________________
  item category does not match existing item: book
 ____________________________________________________________
 ____________________________________________________________
- removed: INV001
+ recalled: INV001
  total quantity: 0
  inventory cost: 0.00
  out of stock: Book
