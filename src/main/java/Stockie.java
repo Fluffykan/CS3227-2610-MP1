@@ -22,7 +22,7 @@ import java.util.Deque;
 /** Starts the Stockie chatbot application. */
 public class Stockie {
     /** Maximum number of distinct items that can be tracked. */
-    private static final int MAX_ITEMS = 100;
+    private static final int MAX_ITEMS = 200_000;
     /** Separates chatbot messages in the console. */
     private static final String DIVIDER = "____________________________________________________________";
     /** Formats expiry dates as day-month-year. */
@@ -257,11 +257,9 @@ public class Stockie {
             commandManager.execute(new RemoveBatchCommand(itemName, itemKey, invoiceKey));
             InventoryItem updatedItem = inventory.get(itemKey);
             System.out.println(" removed: " + invoiceNumber);
-            if (updatedItem == null) {
-                System.out.println(" total quantity: 0");
-                System.out.println(" inventory cost: 0.00");
-            } else {
-                printTotalsOnly(updatedItem);
+            printTotalsOnly(updatedItem);
+            if (updatedItem.getTotalQuantity() == 0) {
+                System.out.println(" out of stock: " + updatedItem.getDisplayName());
             }
         } catch (IOException exception) {
             System.out.println(" unable to save inventory; removal cancelled");
@@ -493,9 +491,6 @@ public class Stockie {
         private void removeBatch(String itemKey, String invoiceKey) {
             InventoryItem item = items.get(itemKey);
             item.removeBatch(invoiceKey);
-            if (item.isEmpty()) {
-                items.remove(itemKey);
-            }
         }
 
         private InventoryItem copyItem(String itemKey) {

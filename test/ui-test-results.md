@@ -1,6 +1,6 @@
 # UI Test Results
 
-Run: 2026-08-20T12:30:41
+Run: 2026-08-20T12:39:08
 
 ## Test Case: add and remove inventory batches
 **Aim:** Verify that Stockie tracks invoice batches, updates totals after additions and removal, lists batch details, and exits with `bye`.
@@ -190,6 +190,7 @@ ____________________________________________________________
  removed: INV002
  total quantity: 0
  inventory cost: 0.00
+ out of stock: milk
 ____________________________________________________________
 ____________________________________________________________
  added batch:
@@ -240,6 +241,11 @@ ____________________________________________________________
     total quantity: 4
     inventory cost: 22.00
     invoice INV001: quantity 4, unit price 5.50, upc UPC001
+ 2. milk
+    sku: SKU-MILK
+    category: perishable
+    total quantity: 0
+    inventory cost: 0.00
 ____________________________________________________________
 ____________________________________________________________
  added: tea
@@ -273,7 +279,12 @@ ____________________________________________________________
     total quantity: 4
     inventory cost: 22.00
     invoice INV001: quantity 4, unit price 5.50, upc UPC001
- 2. mug
+ 2. milk
+    sku: SKU-MILK
+    category: perishable
+    total quantity: 0
+    inventory cost: 0.00
+ 3. mug
     sku: SKU-MUG
     category: non_perishable
     total quantity: 1
@@ -577,6 +588,7 @@ ____________________________________________________________
  removed: INV001
  total quantity: 0
  inventory cost: 0.00
+ out of stock: red book
 ____________________________________________________________
 Bye. Hope to see you again soon!
 ____________________________________________________________
@@ -624,9 +636,14 @@ ____________________________________________________________
  removed: INV001
  total quantity: 0
  inventory cost: 0.00
+ out of stock: Book
 ____________________________________________________________
 ____________________________________________________________
- No items in list
+ 1. Book
+    sku: SKU-BOOK
+    category: perishable
+    total quantity: 0
+    inventory cost: 0.00
 ____________________________________________________________
 Bye. Hope to see you again soon!
 ____________________________________________________________
