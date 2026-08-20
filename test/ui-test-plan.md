@@ -56,6 +56,108 @@ Bye. Hope to see you again soon!
 ____________________________________________________________
 ```
 
+## Test Case: find item by name and SKU
+### Aim
+Verify that `find` retrieves the same item by its case-insensitive name and SKU, including all item and batch details.
+
+### Inputs
+```text
+add --item Red Apple --sku SKU-RED --invoice INV-RED --quantity 4 --price 1.25
+find --item red apple
+find --sku sku-red
+bye
+```
+
+### Expected Output
+```text
+____________________________________________________________
+ ____  _             _    _      
+/ ___|| |_ ___   ___| | _(_) ___ 
+\___ \| __/ _ \ / __| |/ / |/ _ \
+ ___) | || (_) | (__|   <| |  __/
+|____/ \__\___/ \___|_|\_\_|\___|
+
+Hello! I'm Stockie.
+What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ added: Red Apple
+ total quantity: 4
+ inventory cost: 5.00
+____________________________________________________________
+____________________________________________________________
+    sku: SKU-RED
+    category: non_perishable
+    total quantity: 4
+    inventory cost: 5.00
+    invoice INV-RED: quantity 4, unit price 1.25
+____________________________________________________________
+____________________________________________________________
+    sku: SKU-RED
+    category: non_perishable
+    total quantity: 4
+    inventory cost: 5.00
+    invoice INV-RED: quantity 4, unit price 1.25
+____________________________________________________________
+Bye. Hope to see you again soon!
+____________________________________________________________
+```
+
+## Test Case: find validation and missing results
+### Aim
+Verify that invalid find arguments and unsuccessful searches produce clear errors without changing the inventory state.
+
+### Inputs
+```text
+add --item Rice Flour --sku SKU-RICE --invoice INV-RICE --quantity 2 --price 3.00
+find --item missing item
+find --sku missing-sku
+find --item Rice Flour --sku SKU-RICE
+find
+find --sku sku-rice
+bye
+```
+
+### Expected Output
+```text
+____________________________________________________________
+ ____  _             _    _      
+/ ___|| |_ ___   ___| | _(_) ___ 
+\___ \| __/ _ \ / __| |/ / |/ _ \
+ ___) | || (_) | (__|   <| |  __/
+|____/ \__\___/ \___|_|\_\_|\___|
+
+Hello! I'm Stockie.
+What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ added: Rice Flour
+ total quantity: 2
+ inventory cost: 6.00
+____________________________________________________________
+____________________________________________________________
+ no item found with item: missing item
+____________________________________________________________
+____________________________________________________________
+ no item found with sku: missing-sku
+____________________________________________________________
+____________________________________________________________
+ usage: find --item <name> or find --sku <sku>
+____________________________________________________________
+____________________________________________________________
+ usage: find --item <name> or find --sku <sku>
+____________________________________________________________
+____________________________________________________________
+    sku: SKU-RICE
+    category: non_perishable
+    total quantity: 2
+    inventory cost: 6.00
+    invoice INV-RICE: quantity 2, unit price 3.00
+____________________________________________________________
+Bye. Hope to see you again soon!
+____________________________________________________________
+```
+
 ## Test Case: invalid remove and add fields
 ### Aim
 Verify that missing fields are reported accurately and invalid commands do not alter inventory.
@@ -347,6 +449,7 @@ ____________________________________________________________
  add --item <name> --sku <sku> --invoice <invoice> --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]
  remove --item <name> --invoice <invoice>
  list
+ find --item <name> | --sku <sku>
  undo
  redo
  help

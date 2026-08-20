@@ -45,6 +45,8 @@ public class Stockie {
             List.of("item", "sku", "invoice", "quantity", "price", "expiry", "upc");
     /** Required and supported named fields accepted by the remove command. */
     private static final List<String> REMOVE_FIELDS = List.of("item", "invoice");
+    /** Fields accepted by the find command; exactly one must be supplied. */
+    private static final List<String> FIND_SUPPORTED_FIELDS = List.of("item", "sku");
 
 
     /** Greets the user, processes commands, and exits on {@code bye}. */
@@ -90,6 +92,7 @@ public class Stockie {
         case "add": addBatch(arguments, scanner); break;
         case "remove": removeBatch(arguments); break;
         case "list": listItems(arguments); break;
+        case "find": findItem(arguments); break;
         case "undo": undo(); break;
         case "redo": redo(); break;
         case "help": printHelp(arguments); break;
@@ -111,6 +114,7 @@ public class Stockie {
                 + " --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]");
         System.out.println(" remove --item <name> --invoice <invoice>");
         System.out.println(" list");
+        System.out.println(" find --item <name> | --sku <sku>");
         System.out.println(" undo");
         System.out.println(" redo");
         System.out.println(" help");
@@ -156,8 +160,14 @@ public class Stockie {
         } else if (item.getCategory() != category) {
             System.out.println(" item category does not match existing item: " + itemName);
             return;
-        } else if (!item.getSku().equals(sku)) {
+        } else if (!normalize(item.getSku()).equals(normalize(sku))) {
             System.out.println(" sku does not match existing item: " + itemName);
+            return;
+        }
+
+        InventoryItem itemWithSku = inventory.getBySku(normalize(sku));
+        if (item == null && itemWithSku != null) {
+            System.out.println(" sku already exists: " + sku);
             return;
         }
 
@@ -266,6 +276,29 @@ public class Stockie {
         }
     }
 
+    /** Finds an item by its normalized name or SKU and prints its details. */
+    private static void findItem(String arguments) {
+        Map<String, String> fields = parseNamedArguments(arguments, List.of(), FIND_SUPPORTED_FIELDS);
+        if (fields == null) return;
+        if (fields.size() != 1) {
+            System.out.println(" usage: find --item <name> or find --sku <sku>");
+            return;
+        }
+
+        InventoryItem item;
+        if (fields.containsKey("item")) {
+            item = inventory.get(normalize(fields.get("item")));
+        } else {
+            item = inventory.getBySku(normalize(fields.get("sku")));
+        }
+        if (item == null) {
+            String field = fields.containsKey("item") ? "item" : "sku";
+            System.out.println(" no item found with " + field + ": " + fields.get(field));
+            return;
+        }
+        printItemDetails(item);
+    }
+
     /** Undoes the most recent successful change. */
     private static void undo() {
         try {
@@ -303,18 +336,23 @@ public class Stockie {
         int itemNumber = 1;
         for (InventoryItem item : inventory.values()) {
             System.out.println(" " + itemNumber + ". " + item.getDisplayName());
-            System.out.println("    sku: " + item.getSku());
-            System.out.println("    category: " + item.getCategory().name().toLowerCase(Locale.ROOT));
-            System.out.println("    total quantity: " + item.getTotalQuantity());
-            System.out.println("    inventory cost: " + formatPrice(item.getTotalCost()));
-            for (Batch batch : item.getBatches().values()) {
-                System.out.println("    invoice " + batch.getInvoiceNumber()
-                        + ": quantity " + batch.getQuantity()
-                        + ", unit price " + formatPrice(batch.getUnitPrice())
-                        + formatUpc(batch)
-                        + formatExpiry(batch));
-            }
+            printItemDetails(item);
             itemNumber++;
+        }
+    }
+
+    /** Prints the fields, totals, and batches belonging to one inventory item. */
+    private static void printItemDetails(InventoryItem item) {
+        System.out.println("    sku: " + item.getSku());
+        System.out.println("    category: " + item.getCategory().name().toLowerCase(Locale.ROOT));
+        System.out.println("    total quantity: " + item.getTotalQuantity());
+        System.out.println("    inventory cost: " + formatPrice(item.getTotalCost()));
+        for (Batch batch : item.getBatches().values()) {
+            System.out.println("    invoice " + batch.getInvoiceNumber()
+                    + ": quantity " + batch.getQuantity()
+                    + ", unit price " + formatPrice(batch.getUnitPrice())
+                    + formatUpc(batch)
+                    + formatExpiry(batch));
         }
     }
 
@@ -465,12 +503,16 @@ public class Stockie {
     /** Owns inventory mutations and creates defensive copies for command history. */
     private static final class InventoryService {
         private HashMap<String, InventoryItem> items = new HashMap<>();
+        /** Secondary index from normalized SKU to the canonical item object. */
+        private HashMap<String, InventoryItem> itemsBySku = new HashMap<>();
 
         private void load(InventoryRepository repository) throws IOException, ClassNotFoundException {
             items = deepCopy(repository.load());
+            rebuildSkuIndex();
         }
 
         private InventoryItem get(String itemKey) { return items.get(itemKey); }
+        private InventoryItem getBySku(String skuKey) { return itemsBySku.get(skuKey); }
         private boolean isEmpty() { return items.isEmpty(); }
         private java.util.Collection<InventoryItem> values() { return items.values(); }
         private int size() { return items.size(); }
@@ -481,6 +523,7 @@ public class Stockie {
             if (item == null) {
                 item = new InventoryItem(itemName, sku, category);
                 items.put(itemKey, item);
+                itemsBySku.put(normalize(sku), item);
             }
             item.addBatch(normalize(batch.getInvoiceNumber()), batch.getInvoiceNumber(),
                     batch.getQuantity(), batch.getUnitPrice(),
@@ -499,11 +542,16 @@ public class Stockie {
         }
 
         private void restoreItem(String itemKey, InventoryItem item) {
-            if (item == null) {
-                items.remove(itemKey);
-            } else {
-                items.put(itemKey, item.deepCopy());
+            InventoryItem current = items.remove(itemKey);
+            if (current != null) {
+                itemsBySku.remove(normalize(current.getSku()));
             }
+            if (item == null) {
+                return;
+            }
+            InventoryItem restored = item.deepCopy();
+            items.put(itemKey, restored);
+            itemsBySku.put(normalize(restored.getSku()), restored);
         }
 
         private HashMap<String, InventoryItem> snapshot() { return deepCopy(items); }
@@ -514,6 +562,14 @@ public class Stockie {
                 copy.put(entry.getKey(), entry.getValue().deepCopy());
             }
             return copy;
+        }
+
+        /** Rebuilds the transient SKU index after loading persisted inventory data. */
+        private void rebuildSkuIndex() {
+            itemsBySku.clear();
+            for (InventoryItem item : items.values()) {
+                itemsBySku.put(normalize(item.getSku()), item);
+            }
         }
     }
 
