@@ -1,11 +1,14 @@
 package stockie.application;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 
 import stockie.application.request.AddBatchRequest;
 import stockie.application.result.AddBatchResult;
 import stockie.application.result.CommandResult;
+import stockie.application.result.ExpiringItem;
+import stockie.application.result.ExpiringBatchQueryResult;
 import stockie.application.result.FindQueryResult;
 import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
@@ -183,6 +186,21 @@ public final class StockieController {
         return items.isEmpty() ? new ListQueryResult(items,
                 depletedOnly ? " No depleted items in list" : " No items in list")
                 : new ListQueryResult(items, null);
+    }
+
+    /** Returns perishable batches that expire from today through the requested number of days. */
+    public ExpiringBatchQueryResult listExpiringBatches(int days) {
+        List<ExpiringItem> items = queries.listExpiringIn(LocalDate.now(), days);
+        return items.isEmpty() ? new ExpiringBatchQueryResult(items,
+                " No batches expiring in " + days + " days")
+                : new ExpiringBatchQueryResult(items, null);
+    }
+
+    /** Returns perishable batches that expired before today. */
+    public ExpiringBatchQueryResult listExpiredBatches() {
+        List<ExpiringItem> items = queries.listExpired(LocalDate.now());
+        return items.isEmpty() ? new ExpiringBatchQueryResult(items, " No expired batches in list")
+                : new ExpiringBatchQueryResult(items, null);
     }
 
     /** Looks up an item by display name. */

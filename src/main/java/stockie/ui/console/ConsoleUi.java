@@ -16,6 +16,8 @@ import stockie.application.StockieController;
 import stockie.application.request.AddBatchRequest;
 import stockie.application.result.AddBatchResult;
 import stockie.application.result.CommandResult;
+import stockie.application.result.ExpiringItem;
+import stockie.application.result.ExpiringBatchQueryResult;
 import stockie.application.result.FindQueryResult;
 import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
@@ -129,7 +131,7 @@ public final class ConsoleUi {
         System.out.println(" recall (--item <name> | --sku <sku>) --invoice <invoice>");
         System.out.println(" remove (--item <name> | --sku <sku>)");
         System.out.println(" update-sku (--item <name> | --current-sku <old sku>) --sku <new sku>");
-        System.out.println(" list [depleted]");
+        System.out.println(" list [depleted | expired | expiring-in <days>]");
         System.out.println(" find --item <name> | --sku <sku>");
         System.out.println(" undo");
         System.out.println(" redo");
@@ -338,9 +340,51 @@ public final class ConsoleUi {
             displayList(controller.listItems(false));
         } else if (arguments.equalsIgnoreCase("depleted")) {
             displayList(controller.listItems(true));
+        } else if (arguments.equalsIgnoreCase("expired")) {
+            displayExpiringBatches(controller.listExpiredBatches());
         } else {
-            System.out.println(" usage: list [depleted]");
+            String[] listArguments = arguments.split("\\s+");
+            if (listArguments.length == 2 && listArguments[0].equalsIgnoreCase("expiring-in")) {
+                Integer days = parseNonNegativeDays(listArguments[1]);
+                if (days != null) displayExpiringBatches(controller.listExpiringBatches(days));
+                return;
+            }
+            System.out.println(" usage: list [depleted | expired | expiring-in <days>]");
         }
+    }
+
+    /** Renders grouped perishable-batch query results. */
+    private static void displayExpiringBatches(ExpiringBatchQueryResult result) {
+        if (result.message() != null) {
+            System.out.println(result.message());
+            return;
+        }
+        int itemNumber = 1;
+        for (ExpiringItem resultItem : result.items()) {
+            InventoryItem item = resultItem.item();
+            System.out.println(" " + itemNumber + ". " + item.getDisplayName());
+            System.out.println("    sku: " + item.getSku());
+            for (PerishableBatch batch : resultItem.batches()) {
+                System.out.println("    invoice: " + batch.getInvoiceNumber());
+                System.out.println("    quantity: " + batch.getQuantity());
+                System.out.println("    unit price: " + formatPrice(batch.getUnitPrice()));
+                if (batch.getUpc() != null) {
+                    System.out.println("    upc: " + batch.getUpc());
+                }
+                System.out.println("    expiry date: " + DATE_FORMAT.format(batch.getExpiryDate()) + "\n");
+            }
+            itemNumber++;
+        }
+    }
+
+    /** Parses the non-negative number of days accepted by the expiry query. */
+    private static Integer parseNonNegativeDays(String text) {
+        try {
+            int days = Integer.parseInt(text);
+            if (days >= 0) return days;
+        } catch (NumberFormatException ignored) { }
+        System.out.println(" days must be a non-negative whole number");
+        return null;
     }
 
     /** Parses a find request before delegating the lookup to the controller. */
@@ -411,6 +455,7 @@ public final class ConsoleUi {
                     + formatUpc(batch)
                     + formatExpiry(batch));
         }
+        System.out.println();
     }
 
     /** Prints an acknowledgement followed by updated totals. */

@@ -2,7 +2,7 @@
 
 The test runner starts a new Stockie process for every case. Expected output is compared exactly after line-ending normalization; do not include user input in it.
 
-The input placeholder `{{TODAY_PLUS_2_YEARS}}` is replaced with a date two years after the test execution date, formatted as `dd-MM-yyyy`.
+Date placeholders such as `{{TODAY_PLUS_5_DAYS}}` and `{{TODAY_PLUS_2_YEARS}}` are replaced with dates relative to the test execution date, formatted as `dd-MM-yyyy`.
 
 ## Test Case: add and recall inventory batches
 ### Aim
@@ -51,6 +51,102 @@ ____________________________________________________________
  recalled: INV002
  total quantity: 10
  inventory cost: 125.00
+____________________________________________________________
+Bye. Hope to see you again soon!
+____________________________________________________________
+```
+
+## Test Case: list batches expiring within a time window
+### Aim
+Verify that the expiry queries group batches by item, order batches by expiry date, order item groups
+by their earliest expiry, exclude non-perishable items, report no matches, and reject negative day counts.
+
+### Inputs
+```text
+add --item milk --sku SKU-MILK --invoice INV-MILK-LATE --quantity 2 --price 3.25 --expiry {{TODAY_PLUS_20_DAYS}} --upc UPC-MILK-LATE
+add --item cheese --sku SKU-CHEESE --invoice INV-CHEESE --quantity 1 --price 5.00 --expiry {{TODAY_PLUS_10_DAYS}}
+add --item milk --sku SKU-MILK --invoice INV-MILK-EARLY --quantity 1 --price 3.50 --expiry {{TODAY_PLUS_5_DAYS}} --upc UPC-MILK-EARLY
+add --item rice --sku SKU-RICE --invoice INV-RICE --quantity 3 --price 2.00
+list expiring-in 30
+list expiring-in 0
+list expiring-in -1
+add --item yogurt --sku SKU-YOGURT --invoice INV-YOGURT --quantity 2 --price 4.00 --expiry 01-01-2020
+yes
+list expired
+bye
+```
+
+### Expected Output
+```text
+____________________________________________________________
+ ____  _             _    _      
+/ ___|| |_ ___   ___| | _(_) ___ 
+\___ \| __/ _ \ / __| |/ / |/ _ \
+ ___) | || (_) | (__|   <| |  __/
+|____/ \__\___/ \___|_|\_\_|\___|
+
+Hello! I'm Stockie.
+What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ added: milk
+ total quantity: 2
+ inventory cost: 6.50
+____________________________________________________________
+____________________________________________________________
+ added: cheese
+ total quantity: 1
+ inventory cost: 5.00
+____________________________________________________________
+____________________________________________________________
+ added: milk
+ total quantity: 3
+ inventory cost: 10.00
+____________________________________________________________
+____________________________________________________________
+ added: rice
+ total quantity: 3
+ inventory cost: 6.00
+____________________________________________________________
+____________________________________________________________
+ 1. milk
+    sku: SKU-MILK
+    invoice: INV-MILK-EARLY
+    quantity: 1
+    unit price: 3.50
+    upc: UPC-MILK-EARLY
+    expiry date: {{TODAY_PLUS_5_DAYS}}
+    invoice: INV-MILK-LATE
+    quantity: 2
+    unit price: 3.25
+    upc: UPC-MILK-LATE
+    expiry date: {{TODAY_PLUS_20_DAYS}}
+ 2. cheese
+    sku: SKU-CHEESE
+    invoice: INV-CHEESE
+    quantity: 1
+    unit price: 5.00
+    expiry date: {{TODAY_PLUS_10_DAYS}}
+____________________________________________________________
+____________________________________________________________
+ No batches expiring in 0 days
+____________________________________________________________
+____________________________________________________________
+ days must be a non-negative whole number
+____________________________________________________________
+____________________________________________________________
+ warning: this batch expired on 01-01-2020. Add it anyway? (yes/no)
+ added: yogurt
+ total quantity: 2
+ inventory cost: 8.00
+____________________________________________________________
+____________________________________________________________
+ 1. yogurt
+    sku: SKU-YOGURT
+    invoice: INV-YOGURT
+    quantity: 2
+    unit price: 4.00
+    expiry date: 01-01-2020
 ____________________________________________________________
 Bye. Hope to see you again soon!
 ____________________________________________________________

@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 PLAN_PATH = Path("test/ui-test-plan.md")
@@ -18,7 +18,7 @@ CLASS_DIRECTORY = Path("_temp/ui-test-classes")
 TEST_DATA_DIRECTORY = Path("_temp/ui-test-data")
 ENTRY_POINT = "stockie.Stockie"
 TEST_TIMEOUT_SECONDS = 10
-RELATIVE_DATE_PATTERN = "{{TODAY_PLUS_2_YEARS}}"
+RELATIVE_DATE_PATTERN = re.compile(r"\{\{TODAY_PLUS_(?P<amount>\d+)_(?P<unit>DAYS|YEARS)\}\}")
 
 
 @dataclass
@@ -48,12 +48,20 @@ def normalise_output(text: str) -> str:
 def resolve_test_inputs(inputs: str, reference_date: date | None = None) -> str:
     """Resolve date placeholders in test inputs relative to the execution date."""
     today = reference_date or datetime.now().date()
-    try:
-        future_date = today.replace(year=today.year + 2)
-    except ValueError:
-        # Preserve a valid date when the test is run on 29 February.
-        future_date = today.replace(year=today.year + 2, day=28)
-    return inputs.replace(RELATIVE_DATE_PATTERN, future_date.strftime("%d-%m-%Y"))
+
+    def replace_relative_date(match: re.Match[str]) -> str:
+        amount = int(match.group("amount"))
+        if match.group("unit") == "DAYS":
+            future_date = today + timedelta(days=amount)
+        else:
+            try:
+                future_date = today.replace(year=today.year + amount)
+            except ValueError:
+                # Preserve a valid date when a leap-day calculation targets a non-leap year.
+                future_date = today.replace(year=today.year + amount, day=28)
+        return future_date.strftime("%d-%m-%Y")
+
+    return RELATIVE_DATE_PATTERN.sub(replace_relative_date, inputs)
 
 
 def parse_plan(plan_path: Path) -> list[TestCase]:
