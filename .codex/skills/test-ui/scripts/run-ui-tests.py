@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 PLAN_PATH = Path("test/ui-test-plan.md")
@@ -18,6 +18,7 @@ CLASS_DIRECTORY = Path("_temp/ui-test-classes")
 TEST_DATA_DIRECTORY = Path("_temp/ui-test-data")
 ENTRY_POINT = "Stockie"
 TEST_TIMEOUT_SECONDS = 10
+RELATIVE_DATE_PATTERN = "{{TODAY_PLUS_2_YEARS}}"
 
 
 @dataclass
@@ -42,6 +43,17 @@ CASE_PATTERN = re.compile(
 def normalise_output(text: str) -> str:
     """Make line endings platform-independent while retaining visible whitespace."""
     return text.replace("\r\n", "\n").replace("\r", "\n").rstrip("\n")
+
+
+def resolve_test_inputs(inputs: str, reference_date: date | None = None) -> str:
+    """Resolve date placeholders in test inputs relative to the execution date."""
+    today = reference_date or datetime.now().date()
+    try:
+        future_date = today.replace(year=today.year + 2)
+    except ValueError:
+        # Preserve a valid date when the test is run on 29 February.
+        future_date = today.replace(year=today.year + 2, day=28)
+    return inputs.replace(RELATIVE_DATE_PATTERN, future_date.strftime("%d-%m-%Y"))
 
 
 def parse_plan(plan_path: Path) -> list[TestCase]:
@@ -152,8 +164,15 @@ def main() -> int:
         repo = Path.cwd()
         require_java_25()
         compile_program(repo)
+        run_date = datetime.now().date()
         records: list[dict] = []
         for index, case in enumerate(cases, start=1):
+            case = TestCase(
+                case.name,
+                case.aim,
+                resolve_test_inputs(case.inputs, run_date),
+                resolve_test_inputs(case.expected_output, run_date),
+            )
             test_data_file = prepare_test_data_file(repo, index)
             actual = run_case(repo, case, test_data_file)
             passed = actual == case.expected_output
