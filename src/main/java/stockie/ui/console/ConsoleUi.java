@@ -20,6 +20,8 @@ import stockie.application.result.FindQueryResult;
 import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
 import stockie.application.result.RemoveItemResult;
+import stockie.application.result.UpdateSkuResult;
+import stockie.command.UpdateSkuCommand;
 import stockie.model.Batch;
 import stockie.model.InventoryItem;
 import stockie.model.PerishableBatch;
@@ -33,16 +35,25 @@ public final class ConsoleUi {
             .withResolverStyle(ResolverStyle.STRICT);
     /** Provides UI-independent inventory operations. */
     private final StockieController controller;
-    /** Required named fields accepted by the add command. */
-    private static final List<String> ADD_REQUIRED_FIELDS =
-            List.of("item", "sku", "invoice", "quantity", "price");
+    /** Required field groups for the add command; each group requires one supplied field. */
+    private static final List<List<String>> ADD_REQUIRED_FIELDS = List.of(
+            List.of("item"), List.of("sku"), List.of("invoice"), List.of("quantity"),
+            List.of("price"));
     /** All named fields accepted by the add command, including optional fields. */
     private static final List<String> ADD_SUPPORTED_FIELDS =
             List.of("item", "sku", "invoice", "quantity", "price", "expiry", "upc");
     /** Fields accepted by the recall command; one identifier and an invoice are required. */
     private static final List<String> RECALL_SUPPORTED_FIELDS = List.of("item", "sku", "invoice");
+    /** Required field groups for the recall command. */
+    private static final List<List<String>> RECALL_REQUIRED_FIELDS =
+            List.of(List.of("item", "sku"), List.of("invoice"));
     /** Fields accepted by the item removal command; exactly one identifier is required. */
     private static final List<String> REMOVE_SUPPORTED_FIELDS = List.of("item", "sku");
+    /** Required field groups for the item removal command. */
+    private static final List<List<String>> REMOVE_REQUIRED_FIELDS = List.of(List.of("item", "sku"));
+    /** Fields accepted by the SKU update command. */
+    private static final List<String> UPDATE_SKU_SUPPORTED_FIELDS =
+            List.of("item", "current-sku", "sku");
     /** Fields accepted by the find command; exactly one must be supplied. */
     private static final List<String> FIND_SUPPORTED_FIELDS = List.of("item", "sku");
 
@@ -93,6 +104,7 @@ public final class ConsoleUi {
         case "add": addBatch(arguments, scanner); break;
         case "recall": recallBatch(arguments); break;
         case "remove": removeItem(arguments, scanner); break;
+        case "update-sku": updateSku(arguments); break;
         case "list": list(arguments); break;
         case "find": find(arguments); break;
         case "undo": undo(); break;
@@ -116,6 +128,7 @@ public final class ConsoleUi {
                 + " --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]");
         System.out.println(" recall (--item <name> | --sku <sku>) --invoice <invoice>");
         System.out.println(" remove (--item <name> | --sku <sku>)");
+        System.out.println(" update-sku (--item <name> | --current-sku <old sku>) --sku <new sku>");
         System.out.println(" list [depleted]");
         System.out.println(" find --item <name> | --sku <sku>");
         System.out.println(" undo");
@@ -160,9 +173,12 @@ public final class ConsoleUi {
         printTotals(" added: " + itemName, result.item());
     }
 
-    /** Parses named arguments using command-specific required and supported fields. */
+    /**
+     * Parses named arguments using command-specific required field groups and supported fields.
+     * Each required field group must contain at least one supplied field.
+     */
     static Map<String, String> parseNamedArguments(String arguments,
-            List<String> requiredFields, List<String> supportedFields) {
+            List<List<String>> requiredFieldGroups, List<String> supportedFields) {
         String[] tokens = arguments.trim().isEmpty() ? new String[0] : arguments.trim().split("\\s+");
         HashMap<String, String> values = new HashMap<>();
         String currentKey = null;
@@ -192,10 +208,22 @@ public final class ConsoleUi {
         }
 
         StringBuilder missing = new StringBuilder();
-        for (String field : requiredFields) {
-            if (!values.containsKey(field)) {
+        for (List<String> requiredFieldGroup : requiredFieldGroups) {
+            boolean hasRequiredField = false;
+            for (String field : requiredFieldGroup) {
+                if (values.containsKey(field)) {
+                    hasRequiredField = true;
+                    break;
+                }
+            }
+            if (!hasRequiredField) {
                 if (missing.length() > 0) missing.append(", ");
-                missing.append("--").append(field);
+                boolean firstFieldInGroup = true;
+                for (String field : requiredFieldGroup) {
+                    if (!firstFieldInGroup) missing.append(" or ");
+                    missing.append("--").append(field);
+                    firstFieldInGroup = false;
+                }
             }
         }
         if (missing.length() > 0) {
@@ -226,7 +254,8 @@ public final class ConsoleUi {
 
     /** Recalls an entire batch using an item name or SKU and an invoice number. */
     private void recallBatch(String arguments) {
-        Map<String, String> fields = parseNamedArguments(arguments, List.of("invoice"), RECALL_SUPPORTED_FIELDS);
+        Map<String, String> fields = parseNamedArguments(arguments,
+                RECALL_REQUIRED_FIELDS, RECALL_SUPPORTED_FIELDS);
         if (fields == null) return;
         if (fields.containsKey("item") == fields.containsKey("sku")) {
             System.out.println(" usage: recall (--item <name> | --sku <sku>) --invoice <invoice>");
@@ -250,7 +279,8 @@ public final class ConsoleUi {
 
     /** Confirms and removes every batch belonging to one item. */
     private void removeItem(String arguments, Scanner scanner) {
-        Map<String, String> fields = parseNamedArguments(arguments, List.of(), REMOVE_SUPPORTED_FIELDS);
+        Map<String, String> fields = parseNamedArguments(arguments,
+                REMOVE_REQUIRED_FIELDS, REMOVE_SUPPORTED_FIELDS);
         if (fields == null) return;
         if (fields.containsKey("item") == fields.containsKey("sku")) {
             System.out.println(" usage: remove (--item <name> | --sku <sku>)");
@@ -278,6 +308,28 @@ public final class ConsoleUi {
             return;
         }
         System.out.println(" removed item: " + result.item().getDisplayName());
+    }
+
+    /** Updates an item's SKU after selecting it by name or its current SKU. */
+    private void updateSku(String arguments) {
+        Map<String, String> fields = parseNamedArguments(arguments, List.of(List.of("sku")),
+                UPDATE_SKU_SUPPORTED_FIELDS);
+        if (fields == null) return;
+        if (fields.containsKey("item") == fields.containsKey("current-sku")) {
+            System.out.println(" usage: update-sku (--item <name> | --current-sku <old sku>)"
+                    + " --sku <new sku>");
+            return;
+        }
+        UpdateSkuResult result = fields.containsKey("item")
+                ? controller.updateSkuByName(fields.get("item"), fields.get("sku"))
+                : controller.updateSkuByCurrentSku(fields.get("current-sku"), fields.get("sku"));
+        if (result.message() != null) {
+            System.out.println(result.message());
+            return;
+        }
+        System.out.println(" updated sku: " + result.item().getDisplayName());
+        System.out.println(" old sku: " + result.oldSku());
+        System.out.println(" new sku: " + result.item().getSku());
     }
 
     /** Parses a list request before delegating its UI-independent part to the controller. */
@@ -375,6 +427,13 @@ public final class ConsoleUi {
 
     /** Prints the affected batch followed by aggregate totals after undo or redo. */
     private void printCommandDetails(String action, InventoryCommand command) {
+        if (command instanceof UpdateSkuCommand) {
+            UpdateSkuCommand skuCommand = (UpdateSkuCommand) command;
+            System.out.println(" " + action + ": " + skuCommand.getItemName());
+            System.out.println(" old sku: " + skuCommand.getOldSku());
+            System.out.println(" new sku: " + skuCommand.getNewSku());
+            return;
+        }
         if (command.getAffectedItem() != null) {
             System.out.println(" " + action + " item:");
             System.out.println(" item: " + command.getItemName());

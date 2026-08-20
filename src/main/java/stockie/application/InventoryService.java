@@ -55,6 +55,14 @@ public final class InventoryService {
         }
     }
 
+    /** Changes an item's SKU while keeping the secondary SKU index synchronized. */
+    public void updateSku(String itemKey, String newSku) {
+        InventoryItem item = items.get(itemKey);
+        itemsBySku.remove(TextNormalizer.normalize(item.getSku()));
+        item.setSku(newSku);
+        itemsBySku.put(TextNormalizer.normalize(newSku), item);
+    }
+
     public InventoryItem copyItem(String itemKey) {
         InventoryItem item = items.get(itemKey);
         return item == null ? null : item.deepCopy();

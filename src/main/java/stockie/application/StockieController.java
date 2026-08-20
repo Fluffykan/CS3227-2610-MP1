@@ -10,11 +10,13 @@ import stockie.application.result.FindQueryResult;
 import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
 import stockie.application.result.RemoveItemResult;
+import stockie.application.result.UpdateSkuResult;
 import stockie.command.AddBatchCommand;
 import stockie.command.CommandManager;
 import stockie.command.InventoryCommand;
 import stockie.command.RecallBatchCommand;
 import stockie.command.RemoveItemCommand;
+import stockie.command.UpdateSkuCommand;
 import stockie.model.Batch;
 import stockie.model.InventoryItem;
 import stockie.model.ItemCategory;
@@ -137,6 +139,41 @@ public final class StockieController {
             return new RemoveItemResult(command.getAffectedItem(), null);
         } catch (IOException exception) {
             return new RemoveItemResult(null, " unable to save inventory; item removal cancelled");
+        }
+    }
+
+    /** Updates an item's SKU after locating it by display name. */
+    public UpdateSkuResult updateSkuByName(String itemName, String newSku) {
+        return updateSku(TextNormalizer.normalize(itemName), itemName, newSku);
+    }
+
+    /** Updates an item's SKU after locating it by its current SKU. */
+    public UpdateSkuResult updateSkuByCurrentSku(String currentSku, String newSku) {
+        InventoryItem item = inventory.getBySku(TextNormalizer.normalize(currentSku));
+        if (item == null) {
+            return new UpdateSkuResult(null, null, " item not found: " + currentSku);
+        }
+        return updateSku(TextNormalizer.normalize(item.getDisplayName()), currentSku, newSku);
+    }
+
+    /** Validates and executes a reversible SKU change for an already selected item. */
+    private UpdateSkuResult updateSku(String itemKey, String identifier, String newSku) {
+        InventoryItem item = inventory.get(itemKey);
+        if (item == null) {
+            return new UpdateSkuResult(null, null, " item not found: " + identifier);
+        }
+        String oldSku = item.getSku();
+        if (TextNormalizer.normalize(oldSku).equals(TextNormalizer.normalize(newSku))) {
+            return new UpdateSkuResult(null, null, " new sku is the same as the current sku");
+        }
+        if (inventory.getBySku(TextNormalizer.normalize(newSku)) != null) {
+            return new UpdateSkuResult(null, null, " sku already exists: " + newSku);
+        }
+        try {
+            commandManager.execute(new UpdateSkuCommand(inventory, itemKey, newSku));
+            return new UpdateSkuResult(inventory.get(itemKey), oldSku, null);
+        } catch (IOException exception) {
+            return new UpdateSkuResult(null, null, " unable to save inventory; sku update cancelled");
         }
     }
 

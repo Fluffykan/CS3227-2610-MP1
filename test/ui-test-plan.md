@@ -129,6 +129,93 @@ Bye. Hope to see you again soon!
 ____________________________________________________________
 ```
 
+## Test Case: update an SKU with validation and history
+### Aim
+Verify that SKU updates support both identifiers, reject invalid replacements, update lookup behaviour, and can be undone and redone.
+
+### Inputs
+```text
+add --item coffee --sku SKU-COFFEE --invoice INV001 --quantity 2 --price 3.50
+add --item tea --sku SKU-TEA --invoice INV002 --quantity 1 --price 4.00
+update-sku --item coffee --sku SKU-COFFEE-2026
+find --sku SKU-COFFEE-2026
+update-sku --current-sku SKU-COFFEE-2026 --sku SKU-TEA
+update-sku --current-sku SKU-COFFEE-2026 --sku sku-coffee-2026
+undo
+find --sku SKU-COFFEE
+redo
+find --sku SKU-COFFEE-2026
+bye
+```
+
+### Expected Output
+```text
+____________________________________________________________
+ ____  _             _    _      
+/ ___|| |_ ___   ___| | _(_) ___ 
+\___ \| __/ _ \ / __| |/ / |/ _ \
+ ___) | || (_) | (__|   <| |  __/
+|____/ \__\___/ \___|_|\_\_|\___|
+
+Hello! I'm Stockie.
+What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ added: coffee
+ total quantity: 2
+ inventory cost: 7.00
+____________________________________________________________
+____________________________________________________________
+ added: tea
+ total quantity: 1
+ inventory cost: 4.00
+____________________________________________________________
+____________________________________________________________
+ updated sku: coffee
+ old sku: SKU-COFFEE
+ new sku: SKU-COFFEE-2026
+____________________________________________________________
+____________________________________________________________
+    sku: SKU-COFFEE-2026
+    category: non_perishable
+    total quantity: 2
+    inventory cost: 7.00
+    invoice INV001: quantity 2, unit price 3.50
+____________________________________________________________
+____________________________________________________________
+ sku already exists: SKU-TEA
+____________________________________________________________
+____________________________________________________________
+ new sku matches the current sku
+____________________________________________________________
+____________________________________________________________
+ restored sku: coffee
+ old sku: SKU-COFFEE
+ new sku: SKU-COFFEE-2026
+____________________________________________________________
+____________________________________________________________
+    sku: SKU-COFFEE
+    category: non_perishable
+    total quantity: 2
+    inventory cost: 7.00
+    invoice INV001: quantity 2, unit price 3.50
+____________________________________________________________
+____________________________________________________________
+ updated sku: coffee
+ old sku: SKU-COFFEE
+ new sku: SKU-COFFEE-2026
+____________________________________________________________
+____________________________________________________________
+    sku: SKU-COFFEE-2026
+    category: non_perishable
+    total quantity: 2
+    inventory cost: 7.00
+    invoice INV001: quantity 2, unit price 3.50
+____________________________________________________________
+Bye. Hope to see you again soon!
+____________________________________________________________
+```
+
 ## Test Case: find item by name and SKU
 ### Aim
 Verify that `find` retrieves the same item by its case-insensitive name and SKU, including all item and batch details.
@@ -265,7 +352,7 @@ ____________________________________________________________
  missing required fields: --sku, --invoice, --quantity, --price
 ____________________________________________________________
 ____________________________________________________________
- missing required fields: --invoice
+ missing required fields: --item or --sku, --invoice
 ____________________________________________________________
 ____________________________________________________________
  missing required fields: --invoice
@@ -526,6 +613,7 @@ ____________________________________________________________
  add --item <name> --sku <sku> --invoice <invoice> --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]
  recall (--item <name> | --sku <sku>) --invoice <invoice>
  remove (--item <name> | --sku <sku>)
+ update-sku (--item <name> | --current-sku <old sku>) --sku <new sku>
  list [depleted]
  find --item <name> | --sku <sku>
  undo
@@ -545,10 +633,12 @@ ____________________________________________________________
 
 ## Test Case: remove an item with confirmation and history
 ### Aim
-Verify that item removal requires confirmation, accepts both identifiers, removes every batch, and can be undone and redone.
+Verify that item removal requires an identifier and confirmation, accepts both identifiers, removes every batch,
+and can be undone and redone.
 
 ### Inputs
 ```text
+remove
 add --item coffee --sku SKU-COFFEE --invoice INV001 --quantity 2 --price 3.50
 add --item coffee --sku SKU-COFFEE --invoice INV002 --quantity 1 --price 4.00
 remove --sku SKU-COFFEE
@@ -571,6 +661,9 @@ ____________________________________________________________
 
 Hello! I'm Stockie.
 What can I do for you?
+____________________________________________________________
+____________________________________________________________
+ missing required fields: --item or --sku
 ____________________________________________________________
 ____________________________________________________________
  added: coffee
