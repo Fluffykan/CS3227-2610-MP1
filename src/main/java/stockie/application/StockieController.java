@@ -14,7 +14,6 @@ import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
 import stockie.application.result.RemoveItemResult;
 import stockie.application.result.SellItemResult;
-import stockie.application.result.SoldBatch;
 import stockie.application.result.UpdateSkuResult;
 import stockie.command.AddBatchCommand;
 import stockie.command.CommandManager;

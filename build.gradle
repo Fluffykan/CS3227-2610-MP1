@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'application'
     id 'com.gradleup.shadow' version '9.5.1'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 java {
@@ -11,6 +12,11 @@ java {
 
 repositories {
     mavenCentral()
+}
+
+javafx {
+    version = '24.0.2'
+    modules = ['javafx.controls']
 }
 
 dependencies {
@@ -37,7 +43,7 @@ test {
 }
 
 application {
-    mainClass = 'stockie.Stockie'
+    mainClass = 'stockie.ui.javafx.StockieFxApp'
 }
 
 jar {
@@ -52,5 +58,25 @@ shadowJar {
 }
 
 run {
+    standardInput = System.in
+}
+
+tasks.register('runMockup', JavaExec) {
+    group = 'application'
+    description = 'Runs the JavaFX inventory workbench mockup UI.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'stockie.ui.javafx.StockieFxApp'
+    // JavaFX artifacts must be provided as modules at runtime.
+    jvmArgs = [
+            '--module-path', classpath.asPath,
+            '--add-modules', 'javafx.controls'
+    ]
+}
+
+tasks.register('runCli', JavaExec) {
+    group = 'application'
+    description = 'Runs the legacy CLI UI.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'stockie.Stockie'
     standardInput = System.in
 }

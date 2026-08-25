@@ -1,0 +1,157 @@
+.app-root {
+    -fx-background-color: linear-gradient(to bottom, #f6f8fb 0%, #eef2f7 100%);
+    -fx-font-family: "Segoe UI", "Calibri", sans-serif;
+}
+
+.top-section {
+    -fx-background-color: linear-gradient(to right, #0f2a43 0%, #133c5a 48%, #1b4f72 100%);
+}
+
+.title-text {
+    -fx-font-size: 27px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f9fbff;
+}
+
+.subtitle-text {
+    -fx-font-size: 13px;
+    -fx-text-fill: #d8e6f4;
+}
+
+.status-label {
+    -fx-text-fill: #ffe8a6;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.sidebar {
+    -fx-background-color: #f3f7fb;
+    -fx-border-color: #d5e1ec;
+    -fx-border-width: 0 1 0 0;
+}
+
+.panel-header {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #1b3651;
+}
+
+.sidebar-button {
+    -fx-background-color: #e5eff8;
+    -fx-text-fill: #15324a;
+    -fx-font-weight: 600;
+    -fx-padding: 10 12 10 12;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.sidebar-button:hover {
+    -fx-background-color: #d6e8f7;
+}
+
+.cards-row {
+    -fx-padding: 2 0 2 0;
+}
+
+.metric-card {
+    -fx-background-color: linear-gradient(to bottom right, #fdfefe 0%, #f3f7fb 100%);
+    -fx-background-radius: 12;
+    -fx-border-color: #d7e2ec;
+    -fx-border-radius: 12;
+    -fx-padding: 14;
+}
+
+.card-title {
+    -fx-font-size: 12px;
+    -fx-text-fill: #5c7286;
+}
+
+.card-value {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #11314f;
+}
+
+.card-caption {
+    -fx-font-size: 11px;
+    -fx-text-fill: #7d90a1;
+}
+
+.content-panel {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 12;
+    -fx-border-color: #d6e2ed;
+    -fx-border-radius: 12;
+    -fx-padding: 12;
+}
+
+.action-bar {
+    -fx-background-color: #f5f8fc;
+    -fx-border-color: #d3dfeb;
+    -fx-border-width: 1 0 0 0;
+}
+
+.button {
+    -fx-background-color: #dfe8f2;
+    -fx-text-fill: #1a324b;
+    -fx-font-weight: 600;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12 8 12;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #d1dfec;
+}
+
+.primary-button {
+    -fx-background-color: #1f6e5e;
+    -fx-text-fill: #ffffff;
+}
+
+.primary-button:hover {
+    -fx-background-color: #1a5f51;
+}
+
+.danger-button {
+    -fx-background-color: #b23b3b;
+    -fx-text-fill: #ffffff;
+}
+
+.danger-button:hover {
+    -fx-background-color: #982f2f;
+}
+
+.radio-button-light {
+    -fx-text-fill: #1a324b;
+    -fx-font-weight: 600;
+}
+
+.radio-button-dark {
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: 600;
+}
+
+.text-field,
+.date-picker {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #cad8e7;
+}
+
+.table-view {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #cad8e7;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #edf3f9;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-size: 32px;
+    -fx-border-width: 0 0 1 0;
+    -fx-border-color: #d5e1ec;
+}
