@@ -1,24 +1,16 @@
 package stockie.ui.javafx;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
 import javafx.application.Application;
-import javafx.beans.property.ReadOnlyIntegerWrapper;
-import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -29,10 +21,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
-import javafx.scene.control.Separator;
 import javafx.scene.control.SplitPane;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
@@ -43,26 +32,30 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import stockie.application.InventoryService;
-import stockie.application.StockieController;
+import stockie.application.service.InventoryService;
+import stockie.application.controller.StockieController;
 import stockie.application.request.AddBatchRequest;
 import stockie.application.result.AddBatchResult;
 import stockie.application.result.CommandResult;
-import stockie.application.result.ExpiringBatchQueryResult;
 import stockie.application.result.ExpiringItem;
 import stockie.application.result.FindQueryResult;
-import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
 import stockie.application.result.RemoveItemResult;
 import stockie.application.result.SellItemResult;
-import stockie.application.result.SoldBatch;
 import stockie.application.result.UpdateSkuResult;
-import stockie.command.CommandManager;
-import stockie.model.Batch;
-import stockie.model.InventoryItem;
-import stockie.model.PerishableBatch;
+import stockie.application.command.CommandManager;
+import stockie.entities.Batch;
+import stockie.entities.InventoryItem;
+import stockie.entities.PerishableBatch;
 import stockie.storage.FileInventoryRepository;
 import stockie.storage.InventoryRepository;
+import stockie.ui.javafx.util.BatchRow;
+import stockie.ui.javafx.util.DashboardMetrics;
+import stockie.ui.javafx.util.FxFormatter;
+import stockie.ui.javafx.util.InventoryRow;
+import stockie.ui.javafx.view.InventoryDetailsView;
+import stockie.ui.javafx.view.InventoryTableView;
+import stockie.ui.javafx.view.ViewMode;
 
 /**
  * JavaFX application UI for Stockie.
@@ -71,16 +64,8 @@ import stockie.storage.InventoryRepository;
  * that were available in the console UI.</p>
  */
 public final class StockieFxApp extends Application {
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd-MM-uuuu");
+    private static final DateTimeFormatter DATE_FORMAT = FxFormatter.DATE_FORMAT;
 
-    private final ObservableList<InventoryRow> inventoryRows = FXCollections.observableArrayList();
-    private final ObservableList<BatchRow> detailRows = FXCollections.observableArrayList();
-
-    private final Label selectedItemLabel = new Label("No item selected");
-    private final Label selectedSkuLabel = new Label("-");
-    private final Label selectedCategoryLabel = new Label("-");
-    private final Label selectedQuantityLabel = new Label("-");
-    private final Label selectedCostLabel = new Label("-");
     private final Label statusLabel = new Label("Ready");
 
     private final Label trackedItemsValue = new Label("0");
@@ -88,10 +73,13 @@ public final class StockieFxApp extends Application {
     private final Label inventoryCostValue = new Label("0.00");
     private final Label expiringSoonValue = new Label("0");
 
-    private TableView<InventoryRow> inventoryTable;
-    private TableView<BatchRow> batchTable;
+    private final InventoryDetailsView detailsView = new InventoryDetailsView();
+    private InventoryTableView inventoryView;
 
     private StockieController controller;
+    private StockieFxPresenter presenter;
+    private FxCliHandler cliHandler;
+    private final FxDialogs dialogs = new FxDialogs();
     private ViewMode currentViewMode = ViewMode.ALL;
     private int expiringInDays = 7;
 
@@ -99,6 +87,11 @@ public final class StockieFxApp extends Application {
     @Override
     public void start(Stage stage) {
         this.controller = createController();
+        this.presenter = new StockieFxPresenter(controller, this::replaceInventoryRows,
+            this::applyDashboardMetrics, this::showStatus, this::clearDetails);
+        this.cliHandler = new FxCliHandler(controller, this::replaceInventoryRows,
+            this::bindDetailPanel, this::refreshCurrentView,
+            this::toInventoryRow);
         try {
             controller.load();
         } catch (Exception exception) {
@@ -242,7 +235,8 @@ public final class StockieFxApp extends Application {
     /** Builds the central dashboard cards and split detail area. */
     private VBox buildMainContent() {
         HBox cards = buildDashboardCards();
-        SplitPane splitPane = new SplitPane(buildInventoryTablePane(), buildDetailsPane());
+        inventoryView = new InventoryTableView(this::bindDetailPanel);
+        SplitPane splitPane = new SplitPane(inventoryView.node(), detailsView.node());
         splitPane.setDividerPositions(0.62);
         VBox.setVgrow(splitPane, Priority.ALWAYS);
 
@@ -283,92 +277,6 @@ public final class StockieFxApp extends Application {
     }
 
     /** Builds the inventory master table. */
-    private VBox buildInventoryTablePane() {
-        Label header = new Label("Inventory");
-        header.getStyleClass().add("panel-header");
-
-        inventoryTable = new TableView<>();
-        inventoryTable.setItems(inventoryRows);
-        inventoryTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-
-        TableColumn<InventoryRow, String> itemCol = new TableColumn<>("Item");
-        itemCol.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().itemName()));
-
-        TableColumn<InventoryRow, String> skuCol = new TableColumn<>("SKU");
-        skuCol.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().sku()));
-
-        TableColumn<InventoryRow, String> categoryCol = new TableColumn<>("Category");
-        categoryCol.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().category()));
-
-        TableColumn<InventoryRow, Number> quantityCol = new TableColumn<>("Total Qty");
-        quantityCol.setCellValueFactory(cell -> new ReadOnlyIntegerWrapper(cell.getValue().totalQuantity()));
-
-        TableColumn<InventoryRow, Number> costCol = new TableColumn<>("Inventory Cost");
-        costCol.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().inventoryCost()));
-        costCol.setComparator(Comparator.comparingDouble(Number::doubleValue));
-
-        inventoryTable.getColumns().setAll(itemCol, skuCol, categoryCol, quantityCol, costCol);
-        inventoryTable.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
-            if (newItem != null) {
-                bindDetailPanel(newItem);
-            }
-        });
-
-        VBox wrapper = new VBox(8, header, inventoryTable);
-        wrapper.getStyleClass().add("content-panel");
-        VBox.setVgrow(inventoryTable, Priority.ALWAYS);
-        return wrapper;
-    }
-
-    /** Builds the detail panel and related batch table. */
-    private VBox buildDetailsPane() {
-        Label header = new Label("Item Details");
-        header.getStyleClass().add("panel-header");
-
-        GridPane infoGrid = new GridPane();
-        infoGrid.setVgap(6);
-        infoGrid.setHgap(10);
-        infoGrid.addRow(0, new Label("Item"), selectedItemLabel);
-        infoGrid.addRow(1, new Label("SKU"), selectedSkuLabel);
-        infoGrid.addRow(2, new Label("Category"), selectedCategoryLabel);
-        infoGrid.addRow(3, new Label("Total Qty"), selectedQuantityLabel);
-        infoGrid.addRow(4, new Label("Inventory Cost"), selectedCostLabel);
-
-        Label batchesHeader = new Label("Batches");
-        batchesHeader.getStyleClass().add("panel-header");
-
-        batchTable = new TableView<>();
-        batchTable.setItems(detailRows);
-        batchTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-
-        TableColumn<BatchRow, String> invoiceCol = new TableColumn<>("Invoice");
-        invoiceCol.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().invoice()));
-
-        TableColumn<BatchRow, Number> qtyCol = new TableColumn<>("Qty");
-        qtyCol.setCellValueFactory(cell -> new ReadOnlyIntegerWrapper(cell.getValue().quantity()));
-
-        TableColumn<BatchRow, Number> priceCol = new TableColumn<>("Unit Price");
-        priceCol.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().unitPrice()));
-
-        TableColumn<BatchRow, String> expiryCol = new TableColumn<>("Expiry");
-        expiryCol.setCellValueFactory(cell -> {
-            LocalDate expiry = cell.getValue().expiry();
-            String formatted = expiry == null ? "-" : DATE_FORMAT.format(expiry);
-            return new ReadOnlyStringWrapper(formatted);
-        });
-
-        TableColumn<BatchRow, String> upcCol = new TableColumn<>("UPC");
-        upcCol.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().upc() == null
-                ? "-" : cell.getValue().upc()));
-
-        batchTable.getColumns().setAll(invoiceCol, qtyCol, priceCol, expiryCol, upcCol);
-
-        VBox wrapper = new VBox(8, header, infoGrid, new Separator(), batchesHeader, batchTable);
-        wrapper.getStyleClass().add("content-panel");
-        VBox.setVgrow(batchTable, Priority.ALWAYS);
-        return wrapper;
-    }
-
     /** Builds operation buttons that call corresponding controller methods. */
     private HBox buildActionBar() {
         Button addButton = new Button("Add Batch");
@@ -401,7 +309,7 @@ public final class StockieFxApp extends Application {
             String command = cliInput.getText().trim();
             if (!command.isEmpty()) {
                 cliOutput.appendText("> " + command + "\n");
-                executeCliCommand(command, cliOutput);
+                cliOutput.appendText(cliHandler.execute(command));
                 cliInput.clear();
             }
         });
@@ -417,350 +325,27 @@ public final class StockieFxApp extends Application {
         return bar;
     }
 
-    /** Executes the same named-argument command style as the console UI. */
-    private void executeCliCommand(String input, TextArea output) {
-        int separator = input.indexOf(' ');
-        String command = (separator < 0 ? input : input.substring(0, separator)).toLowerCase(Locale.ROOT);
-        String arguments = separator < 0 ? "" : input.substring(separator + 1).trim();
-
-        switch (command) {
-        case "help":
-            output.appendText("add, recall, remove, sell, update-sku, list, find, undo, redo, bye\n");
-            output.appendText("Use --item, --sku, --quantity, --invoice, --price, --expiry, and --upc.\n");
-            break;
-        case "bye":
-            output.appendText("CLI ready. The window remains open.\n");
-            break;
-        case "undo":
-            appendCommandResult(output, controller.undo(), true);
-            break;
-        case "redo":
-            appendCommandResult(output, controller.redo(), false);
-            break;
-        case "list":
-            executeCliList(arguments, output);
-            break;
-        case "find":
-            executeCliFind(arguments, output);
-            break;
-        case "add":
-            executeCliAdd(arguments, output);
-            break;
-        case "sell":
-            executeCliSell(arguments, output);
-            break;
-        case "recall":
-            executeCliRecall(arguments, output);
-            break;
-        case "remove":
-            executeCliRemove(arguments, output);
-            break;
-        case "update-sku":
-            executeCliUpdateSku(arguments, output);
-            break;
-        default:
-            output.appendText("Unknown command. Type help for available commands.\n");
-            break;
-        }
-    }
-
-    /** Runs list commands from the inline CLI. */
-    private void executeCliList(String arguments, TextArea output) {
-        String option = arguments.trim().toLowerCase(Locale.ROOT);
-        if (option.isEmpty()) {
-            appendItems(output, controller.listItems(false).items());
-        } else if (option.equals("depleted")) {
-            appendItems(output, controller.listItems(true).items());
-        } else if (option.equals("expired")) {
-            appendExpiringItems(output, controller.listExpiredBatches().items());
-        } else if (option.startsWith("expiring-in ")) {
-            Integer days = parseCliInteger(option.substring("expiring-in ".length()), output);
-            if (days != null && days > 0) {
-                appendExpiringItems(output, controller.listExpiringBatches(days).items());
-            }
-        } else {
-            output.appendText("Usage: list [depleted | expired | expiring-in <days>]\n");
-            return;
-        }
-        refreshCurrentView();
-    }
-
-    /** Runs find commands from the inline CLI. */
-    private void executeCliFind(String arguments, TextArea output) {
-        Map<String, String> fields = parseCliFields(arguments, List.of("item", "sku"), output);
-        if (fields == null || fields.size() != 1) {
-            output.appendText("Usage: find --item <name> | --sku <sku>\n");
-            return;
-        }
-        FindQueryResult result = fields.containsKey("item")
-                ? controller.findByName(fields.get("item")) : controller.findBySku(fields.get("sku"));
-        if (result.message() != null) {
-            output.appendText(result.message().trim() + "\n");
-            return;
-        }
-        InventoryRow row = toInventoryRow(result.item());
-        inventoryRows.setAll(List.of(row));
-        inventoryTable.getSelectionModel().selectFirst();
-        bindDetailPanel(row);
-        output.appendText(result.item().getDisplayName() + " | SKU " + result.item().getSku()
-                + " | Qty " + result.item().getTotalQuantity() + "\n");
-    }
-
-    /** Runs add commands from the inline CLI. */
-    private void executeCliAdd(String arguments, TextArea output) {
-        Map<String, String> fields = parseCliFields(arguments,
-                List.of("item", "sku", "invoice", "quantity", "price", "expiry", "upc"), output);
-        if (fields == null || !fields.keySet().containsAll(List.of("item", "sku", "invoice", "quantity", "price"))) {
-            output.appendText("Usage: add --item <name> --sku <sku> --invoice <invoice> --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]\n");
-            return;
-        }
-        Integer quantity = parseCliInteger(fields.get("quantity"), output);
-        BigDecimal price = parseCliDecimal(fields.get("price"), output);
-        LocalDate expiry = parseCliDate(fields.get("expiry"), output);
-        if (quantity == null || quantity <= 0 || price == null || price.signum() < 0
-                || (fields.containsKey("expiry") && expiry == null)) {
-            return;
-        }
-        AddBatchResult result = controller.addBatch(new AddBatchRequest(fields.get("item"), fields.get("sku"),
-                fields.get("invoice"), quantity, price, expiry, fields.get("upc")));
-        if (result.message() != null) {
-            output.appendText(result.message().trim() + "\n");
-            return;
-        }
-        output.appendText("Added batch for " + result.item().getDisplayName() + "\n");
-        refreshCurrentView();
-    }
-
-    /** Runs sell commands from the inline CLI. */
-    private void executeCliSell(String arguments, TextArea output) {
-        Map<String, String> fields = parseCliFields(arguments, List.of("item", "sku", "quantity"), output);
-        if (fields == null || (!fields.containsKey("item") && !fields.containsKey("sku")) || !fields.containsKey("quantity")) {
-            output.appendText("Usage: sell (--item <name> | --sku <sku>) --quantity <quantity>\n");
-            return;
-        }
-        Integer quantity = parseCliInteger(fields.get("quantity"), output);
-        if (quantity == null || quantity <= 0) return;
-        SellItemResult result = fields.containsKey("item")
-                ? controller.sellItemByName(fields.get("item"), quantity)
-                : controller.sellItemBySku(fields.get("sku"), quantity);
-        appendMutationResult(output, result.message(), result.message() == null
-                ? "Sold " + quantity + " of " + result.item().getDisplayName() : null);
-    }
-
-    /** Runs recall, remove, and SKU update commands from the inline CLI. */
-    private void executeCliRecall(String arguments, TextArea output) {
-        Map<String, String> fields = parseCliFields(arguments, List.of("item", "sku", "invoice"), output);
-        if (fields == null || !fields.containsKey("invoice") || (!fields.containsKey("item") && !fields.containsKey("sku"))) {
-            output.appendText("Usage: recall (--item <name> | --sku <sku>) --invoice <invoice>\n");
-            return;
-        }
-        RecallBatchResult result = fields.containsKey("item")
-                ? controller.recallBatchByName(fields.get("item"), fields.get("invoice"))
-                : controller.recallBatchBySku(fields.get("sku"), fields.get("invoice"));
-        appendMutationResult(output, result.message(), result.message() == null ? "Batch recalled." : null);
-    }
-
-    private void executeCliRemove(String arguments, TextArea output) {
-        Map<String, String> fields = parseCliFields(arguments, List.of("item", "sku"), output);
-        if (fields == null || (!fields.containsKey("item") && !fields.containsKey("sku"))) {
-            output.appendText("Usage: remove (--item <name> | --sku <sku>)\n");
-            return;
-        }
-        RemoveItemResult result = fields.containsKey("item")
-                ? controller.removeItemByName(fields.get("item")) : controller.removeItemBySku(fields.get("sku"));
-        appendMutationResult(output, result.message(), result.message() == null ? "Item removed." : null);
-    }
-
-    private void executeCliUpdateSku(String arguments, TextArea output) {
-        Map<String, String> fields = parseCliFields(arguments, List.of("item", "current-sku", "sku"), output);
-        if (fields == null || !fields.containsKey("sku") || (!fields.containsKey("item") && !fields.containsKey("current-sku"))) {
-            output.appendText("Usage: update-sku (--item <name> | --current-sku <old sku>) --sku <new sku>\n");
-            return;
-        }
-        UpdateSkuResult result = fields.containsKey("item")
-                ? controller.updateSkuByName(fields.get("item"), fields.get("sku"))
-                : controller.updateSkuByCurrentSku(fields.get("current-sku"), fields.get("sku"));
-        appendMutationResult(output, result.message(), result.message() == null ? "SKU updated." : null);
-    }
-
-    /** Parses the console-style {@code --field value} arguments for one command. */
-    private Map<String, String> parseCliFields(String arguments, List<String> supported, TextArea output) {
-        String[] tokens = arguments.trim().isEmpty() ? new String[0] : arguments.trim().split("\\s+");
-        Map<String, String> fields = new HashMap<>();
-        String currentKey = null;
-        StringBuilder value = new StringBuilder();
-        for (String token : tokens) {
-            if (token.startsWith("--")) {
-                if (currentKey != null && !storeCliField(fields, currentKey, value.toString(), output)) return null;
-                currentKey = token.substring(2).toLowerCase(Locale.ROOT);
-                if (!supported.contains(currentKey)) {
-                    output.appendText("Unknown field: --" + currentKey + "\n");
-                    return null;
-                }
-                value.setLength(0);
-            } else if (currentKey == null) {
-                output.appendText("Values must follow a named field such as --item.\n");
-                return null;
-            } else {
-                if (value.length() > 0) value.append(' ');
-                value.append(token);
-            }
-        }
-        if (currentKey != null && !storeCliField(fields, currentKey, value.toString(), output)) return null;
-        return fields;
-    }
-
-    private boolean storeCliField(Map<String, String> fields, String key, String value, TextArea output) {
-        if (value.trim().isEmpty()) {
-            output.appendText("Field --" + key + " requires a value.\n");
-            return false;
-        }
-        if (fields.putIfAbsent(key, value.trim()) != null) {
-            output.appendText("Duplicate field: --" + key + "\n");
-            return false;
-        }
-        return true;
-    }
-
-    private Integer parseCliInteger(String text, TextArea output) {
-        try {
-            return Integer.parseInt(text.trim());
-        } catch (NumberFormatException exception) {
-            output.appendText("Expected a whole number.\n");
-            return null;
-        }
-    }
-
-    private BigDecimal parseCliDecimal(String text, TextArea output) {
-        try {
-            return new BigDecimal(text.trim());
-        } catch (NumberFormatException exception) {
-            output.appendText("Expected a valid price.\n");
-            return null;
-        }
-    }
-
-    private LocalDate parseCliDate(String text, TextArea output) {
-        if (text == null) return null;
-        try {
-            return LocalDate.parse(text.trim(), DATE_FORMAT);
-        } catch (RuntimeException exception) {
-            output.appendText("Expiry must use dd-MM-yyyy.\n");
-            return null;
-        }
-    }
-
-    private void appendCommandResult(TextArea output, CommandResult result, boolean undo) {
-        output.appendText(result.message() == null
-                ? (undo ? "Undo" : "Redo") + " applied.\n"
-                : result.message().trim() + "\n");
-        if (result.message() == null) refreshCurrentView();
-    }
-
-    private void appendMutationResult(TextArea output, String message, String successMessage) {
-        output.appendText((message == null ? successMessage : message.trim()) + "\n");
-        if (message == null) refreshCurrentView();
-    }
-
-    private void appendItems(TextArea output, List<InventoryItem> items) {
-        if (items.isEmpty()) {
-            output.appendText("No matching items.\n");
-            return;
-        }
-        for (InventoryItem item : items) {
-            output.appendText(item.getDisplayName() + " | SKU " + item.getSku()
-                    + " | Qty " + item.getTotalQuantity() + "\n");
-        }
-    }
-
-    private void appendExpiringItems(TextArea output, List<ExpiringItem> items) {
-        if (items.isEmpty()) {
-            output.appendText("No matching batches.\n");
-            return;
-        }
-        for (ExpiringItem item : items) {
-            output.appendText(item.item().getDisplayName() + " | batches " + item.batches().size() + "\n");
-        }
-    }
-
     /** Refreshes card metrics and table data according to the current quick filter. */
     private void refreshCurrentView() {
-        refreshMetrics();
-
-        switch (currentViewMode) {
-        case ALL:
-            applyListResult(controller.listItems(false));
-            showStatus("Showing all items");
-            break;
-        case DEPLETED:
-            applyListResult(controller.listItems(true));
-            showStatus("Showing depleted items");
-            break;
-        case EXPIRED:
-            applyExpiringResult(controller.listExpiredBatches(), "Showing expired batches");
-            break;
-        case EXPIRING:
-            applyExpiringResult(controller.listExpiringBatches(expiringInDays),
-                    "Showing batches expiring in " + expiringInDays + " days");
-            break;
-        default:
-            break;
-        }
+        presenter.refresh(currentViewMode, expiringInDays);
     }
 
-    /** Refreshes dashboard metrics from the full inventory snapshot. */
-    private void refreshMetrics() {
-        ListQueryResult allItemsResult = controller.listItems(false);
-        List<InventoryItem> items = allItemsResult.items();
-
-        int totalItems = items.size();
-        int totalQuantity = items.stream().mapToInt(InventoryItem::getTotalQuantity).sum();
-        BigDecimal totalCost = items.stream().map(InventoryItem::getTotalCost)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        ExpiringBatchQueryResult expiring = controller.listExpiringBatches(7);
-        int expiringCount = expiring.items().stream().mapToInt(item -> item.batches().size()).sum();
-
-        trackedItemsValue.setText(String.valueOf(totalItems));
-        totalStockValue.setText(String.valueOf(totalQuantity));
-        inventoryCostValue.setText("$" + formatPrice(totalCost));
-        expiringSoonValue.setText(String.valueOf(expiringCount));
-    }
-
-    /** Applies list query results to the center table and details panel. */
-    private void applyListResult(ListQueryResult result) {
-        if (result.message() != null) {
-            inventoryRows.clear();
-            clearDetails();
-            showStatus(result.message().trim());
-            return;
-        }
-        List<InventoryRow> rows = result.items().stream().map(this::toInventoryRow).toList();
-        replaceInventoryRows(rows);
-    }
-
-    /** Applies expiring/expired results to the center table and details panel. */
-    private void applyExpiringResult(ExpiringBatchQueryResult result, String successStatus) {
-        if (result.message() != null) {
-            inventoryRows.clear();
-            clearDetails();
-            showStatus(result.message().trim());
-            return;
-        }
-        List<InventoryRow> rows = result.items().stream().map(this::toInventoryRow).toList();
-        replaceInventoryRows(rows);
-        showStatus(successStatus);
+    /** Applies presenter-calculated values to the dashboard cards. */
+    private void applyDashboardMetrics(DashboardMetrics metrics) {
+        trackedItemsValue.setText(String.valueOf(metrics.trackedItems()));
+        totalStockValue.setText(String.valueOf(metrics.totalStock()));
+        inventoryCostValue.setText("$" + formatPrice(metrics.inventoryCost()));
+        expiringSoonValue.setText(String.valueOf(metrics.expiringSoon()));
     }
 
     /** Updates table content while preserving a sensible initial selection. */
     private void replaceInventoryRows(List<InventoryRow> rows) {
-        inventoryRows.setAll(rows);
+        inventoryView.setRows(rows);
         if (rows.isEmpty()) {
             clearDetails();
             return;
         }
-        inventoryTable.getSelectionModel().selectFirst();
-        bindDetailPanel(rows.get(0));
+        inventoryView.selectFirst();
     }
 
     /** Handles item lookup by name or SKU and focuses the matching row. */
@@ -779,8 +364,7 @@ public final class StockieFxApp extends Application {
 
         currentViewMode = ViewMode.ALL;
         InventoryRow row = toInventoryRow(result.item());
-        inventoryRows.setAll(List.of(row));
-        inventoryTable.getSelectionModel().selectFirst();
+        inventoryView.setRows(List.of(row));
         bindDetailPanel(row);
         showStatus("Found: " + result.item().getDisplayName());
     }
@@ -797,22 +381,12 @@ public final class StockieFxApp extends Application {
 
     /** Updates the right detail pane based on selected item. */
     private void bindDetailPanel(InventoryRow row) {
-        selectedItemLabel.setText(row.itemName());
-        selectedSkuLabel.setText(row.sku());
-        selectedCategoryLabel.setText(row.category());
-        selectedQuantityLabel.setText(String.valueOf(row.totalQuantity()));
-        selectedCostLabel.setText(formatPrice(row.inventoryCost()));
-        detailRows.setAll(row.batches());
+        detailsView.show(row);
     }
 
     /** Clears the details panel when there is no selected row. */
     private void clearDetails() {
-        selectedItemLabel.setText("No item selected");
-        selectedSkuLabel.setText("-");
-        selectedCategoryLabel.setText("-");
-        selectedQuantityLabel.setText("-");
-        selectedCostLabel.setText("-");
-        detailRows.clear();
+        detailsView.clear();
     }
 
     /** Opens and processes the add-batch form. */
@@ -893,7 +467,7 @@ public final class StockieFxApp extends Application {
         }
 
         refreshCurrentView();
-        showSaleBreakdown(result);
+        dialogs.showSaleBreakdown(result);
         showStatus("Sold " + input.quantity + " of " + result.item().getDisplayName());
     }
 
@@ -1045,31 +619,6 @@ public final class StockieFxApp extends Application {
         return new IdentifierInput(identifier, byItem.isSelected(), quantity, extraValue);
     }
 
-    /** Shows sold-batch details for successful sell actions. */
-    private void showSaleBreakdown(SellItemResult result) {
-        StringBuilder content = new StringBuilder();
-        for (SoldBatch soldBatch : result.soldBatches()) {
-            content.append("Invoice ")
-                    .append(soldBatch.invoiceNumber())
-                    .append(": quantity ")
-                    .append(soldBatch.quantity())
-                    .append("\n");
-        }
-        if (content.length() == 0) {
-            content.append("No batch lines were returned.");
-        }
-
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Sale Complete");
-        alert.setHeaderText("Sold " + result.item().getDisplayName());
-        TextArea details = new TextArea(content.toString());
-        details.setWrapText(true);
-        details.setEditable(false);
-        details.setPrefRowCount(6);
-        alert.getDialogPane().setContent(details);
-        alert.showAndWait();
-    }
-
     /** Converts a full inventory item into a table row with all batches. */
     private InventoryRow toInventoryRow(InventoryItem item) {
         List<Batch> orderedBatches = item.getBatches().values().stream()
@@ -1132,27 +681,17 @@ public final class StockieFxApp extends Application {
 
     /** Formats monetary values with two decimal places. */
     private String formatPrice(BigDecimal price) {
-        return price.setScale(2, RoundingMode.HALF_UP).toPlainString();
+        return FxFormatter.price(price);
     }
 
     /** Shows a warning dialog and keeps the user on the current screen. */
     private void showWarning(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Stockie");
-        alert.setHeaderText("Action could not be completed");
-        alert.setContentText(message);
-        alert.showAndWait();
-        showStatus(message);
+        dialogs.showWarning(message, this::showStatus);
     }
 
     /** Shows a two-option confirmation dialog. */
     private boolean confirm(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(title);
-        alert.setContentText(message);
-        Optional<ButtonType> result = alert.showAndWait();
-        return result.isPresent() && result.get().getButtonData() == ButtonBar.ButtonData.OK_DONE;
+        return dialogs.confirm(title, message);
     }
 
     /** Updates transient status text under the top action row. */
@@ -1160,26 +699,7 @@ public final class StockieFxApp extends Application {
         statusLabel.setText(text == null ? "" : text.trim());
     }
 
-    /** Supported table filter modes. */
-    private enum ViewMode {
-        ALL,
-        DEPLETED,
-        EXPIRED,
-        EXPIRING
-    }
-
     /** Stores parsed identifier form values for action dialogs. */
     private record IdentifierInput(String identifier, boolean byItem, int quantity, String extraFieldValue) { }
 
-    /** Represents one row in the inventory master table. */
-    private record InventoryRow(String itemName, String sku, String category, int totalQuantity,
-                                BigDecimal inventoryCost, List<BatchRow> batches) { }
-
-    /** Represents one batch line in the detail table. */
-    private record BatchRow(String invoice, int quantity, BigDecimal unitPrice,
-                            LocalDate expiry, String upc) {
-        private BigDecimal totalCost() {
-            return unitPrice.multiply(BigDecimal.valueOf(quantity));
-        }
-    }
 }

@@ -1,4 +1,4 @@
-package stockie.model;
+package stockie.entities;
 
 import java.io.Serializable;
 import java.math.BigDecimal;

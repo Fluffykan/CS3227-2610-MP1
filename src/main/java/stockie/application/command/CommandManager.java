@@ -1,6 +1,6 @@
-package stockie.command;
+package stockie.application.command;
 
-import stockie.application.InventoryService;
+import stockie.application.service.InventoryService;
 import stockie.storage.InventoryRepository;
 
 import java.io.IOException;

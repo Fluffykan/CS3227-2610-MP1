@@ -2,9 +2,9 @@ package stockie;
 
 import java.nio.file.Path;
 
-import stockie.application.InventoryService;
-import stockie.application.StockieController;
-import stockie.command.CommandManager;
+import stockie.application.service.InventoryService;
+import stockie.application.controller.StockieController;
+import stockie.application.command.CommandManager;
 import stockie.storage.FileInventoryRepository;
 import stockie.storage.InventoryRepository;
 import stockie.ui.console.ConsoleUi;

@@ -1,11 +1,11 @@
-package stockie.command;
+package stockie.application.command;
 
 import java.util.List;
-import stockie.application.InventoryService;
+import stockie.application.service.InventoryService;
+import stockie.entities.Batch;
+import stockie.entities.InventoryItem;
+import stockie.entities.ItemCategory;
 import stockie.application.result.SoldBatch;
-import stockie.model.Batch;
-import stockie.model.InventoryItem;
-import stockie.model.ItemCategory;
 
 /** Sells quantities from an item while retaining a snapshot for undo and redo. */
 public final class SellItemCommand implements InventoryCommand {

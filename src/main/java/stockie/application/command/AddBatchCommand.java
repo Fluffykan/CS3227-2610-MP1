@@ -1,9 +1,9 @@
-package stockie.command;
+package stockie.application.command;
 
-import stockie.model.Batch;
-import stockie.model.InventoryItem;
-import stockie.model.ItemCategory;
-import stockie.application.InventoryService;
+import stockie.entities.Batch;
+import stockie.entities.InventoryItem;
+import stockie.entities.ItemCategory;
+import stockie.application.service.InventoryService;
 
 /** Adds a batch and snapshots the previous item for undo. */
 public final class AddBatchCommand implements InventoryCommand {

@@ -1,8 +1,8 @@
-package stockie.command;
+package stockie.application.command;
 
-import stockie.model.Batch;
-import stockie.model.InventoryItem;
-import stockie.model.ItemCategory;
+import stockie.entities.Batch;
+import stockie.entities.InventoryItem;
+import stockie.entities.ItemCategory;
 
 /** Represents one reversible inventory mutation. */
 public interface InventoryCommand {

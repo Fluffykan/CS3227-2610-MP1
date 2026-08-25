@@ -1,4 +1,4 @@
-package stockie.model;
+package stockie.entities;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

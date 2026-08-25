@@ -1,9 +1,9 @@
-package stockie.command;
+package stockie.application.command;
 
-import stockie.application.InventoryService;
-import stockie.model.Batch;
-import stockie.model.InventoryItem;
-import stockie.model.ItemCategory;
+import stockie.application.service.InventoryService;
+import stockie.entities.Batch;
+import stockie.entities.InventoryItem;
+import stockie.entities.ItemCategory;
 
 /** Removes an entire item and snapshots it so the operation can be undone. */
 public final class RemoveItemCommand implements InventoryCommand {

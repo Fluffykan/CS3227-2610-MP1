@@ -1,6 +1,6 @@
 package stockie.application.result;
 
-import stockie.model.InventoryItem;
+import stockie.entities.InventoryItem;
 
 import java.util.List;
 

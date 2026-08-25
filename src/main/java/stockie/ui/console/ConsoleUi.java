@@ -11,8 +11,8 @@ import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import stockie.command.InventoryCommand;
-import stockie.application.StockieController;
+import stockie.application.command.InventoryCommand;
+import stockie.application.controller.StockieController;
 import stockie.application.request.AddBatchRequest;
 import stockie.application.result.AddBatchResult;
 import stockie.application.result.CommandResult;
@@ -25,10 +25,10 @@ import stockie.application.result.RemoveItemResult;
 import stockie.application.result.SellItemResult;
 import stockie.application.result.SoldBatch;
 import stockie.application.result.UpdateSkuResult;
-import stockie.command.UpdateSkuCommand;
-import stockie.model.Batch;
-import stockie.model.InventoryItem;
-import stockie.model.PerishableBatch;
+import stockie.application.command.UpdateSkuCommand;
+import stockie.entities.Batch;
+import stockie.entities.InventoryItem;
+import stockie.entities.PerishableBatch;
 
 /** Runs Stockie's command-line interface and renders its application results. */
 public final class ConsoleUi {

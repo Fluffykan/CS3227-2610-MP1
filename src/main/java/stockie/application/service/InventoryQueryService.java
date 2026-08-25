@@ -1,12 +1,12 @@
-package stockie.application;
+package stockie.application.service;
 
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 import stockie.application.result.ExpiringItem;
-import stockie.model.InventoryItem;
-import stockie.model.PerishableBatch;
+import stockie.entities.InventoryItem;
+import stockie.entities.PerishableBatch;
 import stockie.util.TextNormalizer;
 
 /** Provides read-only inventory queries for the controller. */

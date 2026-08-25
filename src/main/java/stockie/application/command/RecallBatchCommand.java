@@ -1,9 +1,9 @@
-package stockie.command;
+package stockie.application.command;
 
-import stockie.model.Batch;
-import stockie.model.InventoryItem;
-import stockie.model.ItemCategory;
-import stockie.application.InventoryService;
+import stockie.entities.Batch;
+import stockie.entities.InventoryItem;
+import stockie.entities.ItemCategory;
+import stockie.application.service.InventoryService;
 
 /** Recalls a batch and snapshots the complete item for undo. */
 public final class RecallBatchCommand implements InventoryCommand {

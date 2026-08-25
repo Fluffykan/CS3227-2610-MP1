@@ -1,6 +1,6 @@
 package stockie.storage;
 
-import stockie.model.InventoryItem;
+import stockie.entities.InventoryItem;
 
 import java.io.IOException;
 import java.util.HashMap;

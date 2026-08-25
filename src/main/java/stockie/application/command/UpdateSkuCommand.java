@@ -1,8 +1,8 @@
-package stockie.command;
+package stockie.application.command;
 
-import stockie.application.InventoryService;
-import stockie.model.Batch;
-import stockie.model.ItemCategory;
+import stockie.application.service.InventoryService;
+import stockie.entities.Batch;
+import stockie.entities.ItemCategory;
 
 /** Changes an item's SKU and retains its former SKU for undo and redo. */
 public final class UpdateSkuCommand implements InventoryCommand {

@@ -1,4 +1,4 @@
-package stockie.application;
+package stockie.application.controller;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -15,18 +15,20 @@ import stockie.application.result.RecallBatchResult;
 import stockie.application.result.RemoveItemResult;
 import stockie.application.result.SellItemResult;
 import stockie.application.result.UpdateSkuResult;
-import stockie.command.AddBatchCommand;
-import stockie.command.CommandManager;
-import stockie.command.InventoryCommand;
-import stockie.command.RecallBatchCommand;
-import stockie.command.RemoveItemCommand;
-import stockie.command.SellItemCommand;
-import stockie.command.UpdateSkuCommand;
-import stockie.model.Batch;
-import stockie.model.InventoryItem;
-import stockie.model.ItemCategory;
-import stockie.model.NonPerishableBatch;
-import stockie.model.PerishableBatch;
+import stockie.application.command.AddBatchCommand;
+import stockie.application.command.CommandManager;
+import stockie.application.command.InventoryCommand;
+import stockie.application.command.RecallBatchCommand;
+import stockie.application.command.RemoveItemCommand;
+import stockie.application.command.SellItemCommand;
+import stockie.application.command.UpdateSkuCommand;
+import stockie.application.service.InventoryService;
+import stockie.entities.Batch;
+import stockie.entities.InventoryItem;
+import stockie.entities.ItemCategory;
+import stockie.entities.NonPerishableBatch;
+import stockie.entities.PerishableBatch;
+import stockie.application.service.InventoryQueryService;
 import stockie.storage.InventoryRepository;
 import stockie.util.TextNormalizer;
 

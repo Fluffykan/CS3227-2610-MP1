@@ -1,9 +1,9 @@
-package stockie.application;
+package stockie.application.service;
 
-import stockie.model.Batch;
-import stockie.model.InventoryItem;
-import stockie.model.ItemCategory;
-import stockie.model.PerishableBatch;
+import stockie.entities.Batch;
+import stockie.entities.InventoryItem;
+import stockie.entities.ItemCategory;
+import stockie.entities.PerishableBatch;
 import stockie.application.result.SoldBatch;
 import stockie.storage.InventoryRepository;
 import stockie.util.TextNormalizer;
