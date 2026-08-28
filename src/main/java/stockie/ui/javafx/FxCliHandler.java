@@ -27,15 +27,17 @@ public final class FxCliHandler {
     private final Consumer<List<InventoryRow>> rowsConsumer;
     private final Consumer<InventoryRow> selectionConsumer;
     private final Runnable refresh;
+    private final Runnable closeApplication;
     private final Function<InventoryItem, InventoryRow> itemMapper;
 
     public FxCliHandler(StockieController controller, Consumer<List<InventoryRow>> rowsConsumer,
             Consumer<InventoryRow> selectionConsumer, Runnable refresh,
-            Function<InventoryItem, InventoryRow> itemMapper) {
+            Runnable closeApplication, Function<InventoryItem, InventoryRow> itemMapper) {
         this.controller = controller;
         this.rowsConsumer = rowsConsumer;
         this.selectionConsumer = selectionConsumer;
         this.refresh = refresh;
+        this.closeApplication = closeApplication;
         this.itemMapper = itemMapper;
     }
 
@@ -46,7 +48,7 @@ public final class FxCliHandler {
         return switch (command) {
         case "help" -> "add, recall, remove, sell, update-sku, list, find, undo, redo, bye\n"
                 + "Use --item, --sku, --quantity, --invoice, --price, --expiry, and --upc.\n";
-        case "bye" -> "CLI ready. The window remains open.\n";
+        case "bye" -> close();
         case "undo" -> history(controller.undo(), true);
         case "redo" -> history(controller.redo(), false);
         case "list" -> list(arguments);
@@ -68,7 +70,7 @@ public final class FxCliHandler {
         else if (option.equals("expired")) appendExpiring(output, controller.listExpiredBatches().items());
         else if (option.startsWith("expiring-in ")) {
             Integer days = integer(option.substring("expiring-in ".length()), output);
-            if (days != null && days > 0) appendExpiring(output, controller.listExpiringBatches(days).items());
+            if (days != null && days >= 0) appendExpiring(output, controller.listExpiringBatches(days).items());
         } else return "Usage: list [depleted | expired | expiring-in <days>]\n";
         refresh.run();
         return output.toString();
@@ -201,6 +203,12 @@ public final class FxCliHandler {
             output.append(item.getDisplayName()).append(" | SKU ").append(item.getSku())
                     .append(" | Qty ").append(item.getTotalQuantity()).append('\n');
         }
+    }
+
+    /** Closes the application and returns the session termination message. */
+    private String close() {
+        closeApplication.run();
+        return "Goodbye.\n";
     }
 
     private void appendExpiring(StringBuilder output, List<ExpiringItem> items) {

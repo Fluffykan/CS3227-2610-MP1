@@ -90,7 +90,7 @@ public final class StockieFxApp extends Application {
             this::applyDashboardMetrics, this::showStatus, this::clearDetails);
         this.cliHandler = new FxCliHandler(controller, this::replaceInventoryRows,
             this::bindDetailPanel, this::refreshCurrentView,
-            this::toInventoryRow);
+            stage::close, this::toInventoryRow);
         try {
             List<String> skippedItems = controller.load();
             if (!skippedItems.isEmpty()) {
