@@ -52,6 +52,7 @@ public final class InventoryQueryService {
                 .map(item -> new ExpiringItem(item, item.getBatches().values().stream()
                         .filter(PerishableBatch.class::isInstance)
                         .map(PerishableBatch.class::cast)
+                        .filter(batch -> batch.getExpiryDate() != null)
                         .filter(batch -> matches.test(batch.getExpiryDate()))
                         .sorted(Comparator.comparing(PerishableBatch::getExpiryDate)
                                 .thenComparing(batch -> TextNormalizer.normalize(
