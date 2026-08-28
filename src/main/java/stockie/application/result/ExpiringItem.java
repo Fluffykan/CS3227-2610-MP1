@@ -1,6 +1,7 @@
 package stockie.application.result;
 
 import java.util.List;
+
 import stockie.entities.InventoryItem;
 import stockie.entities.PerishableBatch;
 

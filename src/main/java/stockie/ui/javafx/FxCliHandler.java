@@ -30,6 +30,7 @@ public final class FxCliHandler {
     private final Runnable closeApplication;
     private final Function<InventoryItem, InventoryRow> itemMapper;
 
+    /** Creates a handler connected to the controller and JavaFX callbacks. */
     public FxCliHandler(StockieController controller, Consumer<List<InventoryRow>> rowsConsumer,
             Consumer<InventoryRow> selectionConsumer, Runnable refresh,
             Runnable closeApplication, Function<InventoryItem, InventoryRow> itemMapper) {
@@ -41,6 +42,7 @@ public final class FxCliHandler {
         this.itemMapper = itemMapper;
     }
 
+    /** Executes one command-line input and returns the user-facing response. */
     public String execute(String input) {
         int separator = input.indexOf(' ');
         String command = (separator < 0 ? input : input.substring(0, separator)).toLowerCase(Locale.ROOT);
@@ -65,23 +67,34 @@ public final class FxCliHandler {
     private String list(String arguments) {
         String option = arguments.trim().toLowerCase(Locale.ROOT);
         StringBuilder output = new StringBuilder();
-        if (option.isEmpty()) appendItems(output, controller.listItems(false).items());
-        else if (option.equals("depleted")) appendItems(output, controller.listItems(true).items());
-        else if (option.equals("expired")) appendExpiring(output, controller.listExpiredBatches().items());
-        else if (option.startsWith("expiring-in ")) {
+        if (option.isEmpty()) {
+            appendItems(output, controller.listItems(false).items());
+        } else if (option.equals("depleted")) {
+            appendItems(output, controller.listItems(true).items());
+        } else if (option.equals("expired")) {
+            appendExpiring(output, controller.listExpiredBatches().items());
+        } else if (option.startsWith("expiring-in ")) {
             Integer days = integer(option.substring("expiring-in ".length()), output);
-            if (days != null && days >= 0) appendExpiring(output, controller.listExpiringBatches(days).items());
-        } else return "Usage: list [depleted | expired | expiring-in <days>]\n";
+            if (days != null && days >= 0) {
+                appendExpiring(output, controller.listExpiringBatches(days).items());
+            }
+        } else {
+            return "Usage: list [depleted | expired | expiring-in <days>]\n";
+        }
         refresh.run();
         return output.toString();
     }
 
     private String find(String arguments) {
         Map<String, String> fields = fields(arguments, List.of("item", "sku"));
-        if (fields == null || fields.size() != 1) return "Usage: find --item <name> | --sku <sku>\n";
+        if (fields == null || fields.size() != 1) {
+            return "Usage: find --item <name> | --sku <sku>\n";
+        }
         FindQueryResult result = fields.containsKey("item") ? controller.findByName(fields.get("item"))
                 : controller.findBySku(fields.get("sku"));
-        if (result.message() != null) return result.message().trim() + "\n";
+        if (result.message() != null) {
+            return result.message().trim() + "\n";
+        }
         InventoryRow row = itemMapper.apply(result.item());
         rowsConsumer.accept(List.of(row));
         selectionConsumer.accept(row);
@@ -93,17 +106,22 @@ public final class FxCliHandler {
         Map<String, String> fields = fields(arguments,
                 List.of("item", "sku", "invoice", "quantity", "price", "expiry", "upc"));
         if (fields == null || !fields.keySet().containsAll(List.of("item", "sku", "invoice", "quantity", "price"))) {
-            return "Usage: add --item <name> --sku <sku> --invoice <invoice> --quantity <quantity> --price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]\n";
+            return "Usage: add --item <name> --sku <sku> --invoice <invoice> --quantity <quantity> "
+                    + "--price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]\n";
         }
         StringBuilder output = new StringBuilder();
         Integer quantity = integer(fields.get("quantity"), output);
         BigDecimal price = decimal(fields.get("price"), output);
         LocalDate expiry = date(fields.get("expiry"), output);
         if (quantity == null || quantity <= 0 || price == null || price.signum() < 0
-                || (fields.containsKey("expiry") && expiry == null)) return output.toString();
+                || (fields.containsKey("expiry") && expiry == null)) {
+            return output.toString();
+        }
         var result = controller.addBatch(new AddBatchRequest(fields.get("item"), fields.get("sku"),
                 fields.get("invoice"), quantity, price, expiry, fields.get("upc")));
-        if (result.message() != null) return result.message().trim() + "\n";
+        if (result.message() != null) {
+            return result.message().trim() + "\n";
+        }
         refresh.run();
         return "Added batch for " + result.item().getDisplayName() + "\n";
     }
@@ -116,7 +134,9 @@ public final class FxCliHandler {
         }
         StringBuilder output = new StringBuilder();
         Integer quantity = integer(fields.get("quantity"), output);
-        if (quantity == null || quantity <= 0) return output.toString();
+        if (quantity == null || quantity <= 0) {
+            return output.toString();
+        }
         SellItemResult result = fields.containsKey("item") ? controller.sellItemByName(fields.get("item"), quantity)
                 : controller.sellItemBySku(fields.get("sku"), quantity);
         return mutation(result.message(), result.message() == null ? "Sold " + quantity + " of "
@@ -129,7 +149,8 @@ public final class FxCliHandler {
                 || (!fields.containsKey("item") && !fields.containsKey("sku"))) {
             return "Usage: recall (--item <name> | --sku <sku>) --invoice <invoice>\n";
         }
-        RecallBatchResult result = fields.containsKey("item") ? controller.recallBatchByName(fields.get("item"), fields.get("invoice"))
+        RecallBatchResult result = fields.containsKey("item")
+                ? controller.recallBatchByName(fields.get("item"), fields.get("invoice"))
                 : controller.recallBatchBySku(fields.get("sku"), fields.get("invoice"));
         return mutation(result.message(), "Batch recalled.");
     }
@@ -156,12 +177,16 @@ public final class FxCliHandler {
     }
 
     private String mutation(String message, String success) {
-        if (message == null) refresh.run();
+        if (message == null) {
+            refresh.run();
+        }
         return (message == null ? success : message.trim()) + "\n";
     }
 
     private String history(CommandResult result, boolean undo) {
-        if (result.message() == null) refresh.run();
+        if (result.message() == null) {
+            refresh.run();
+        }
         return (result.message() == null ? (undo ? "Undo" : "Redo") + " applied." : result.message().trim()) + "\n";
     }
 
@@ -172,14 +197,26 @@ public final class FxCliHandler {
         StringBuilder value = new StringBuilder();
         for (String token : tokens) {
             if (token.startsWith("--")) {
-                if (key != null && !store(values, key, value.toString())) return null;
+                if (key != null && !store(values, key, value.toString())) {
+                    return null;
+                }
                 key = token.substring(2).toLowerCase(Locale.ROOT);
-                if (!supported.contains(key)) return null;
+                if (!supported.contains(key)) {
+                    return null;
+                }
                 value.setLength(0);
-            } else if (key == null) return null;
-            else { if (value.length() > 0) value.append(' '); value.append(token); }
+            } else if (key == null) {
+                return null;
+            } else {
+                if (value.length() > 0) {
+                    value.append(' ');
+                }
+                value.append(token);
+            }
         }
-        if (key != null && !store(values, key, value.toString())) return null;
+        if (key != null && !store(values, key, value.toString())) {
+            return null;
+        }
         return values;
     }
 
@@ -187,13 +224,35 @@ public final class FxCliHandler {
         return !value.trim().isEmpty() && values.putIfAbsent(key, value.trim()) == null;
     }
 
-    private Integer integer(String text, StringBuilder output) { try { return Integer.parseInt(text.trim()); }
-        catch (NumberFormatException exception) { output.append("Expected a whole number.\n"); return null; } }
-    private BigDecimal decimal(String text, StringBuilder output) { try { return new BigDecimal(text.trim()); }
-        catch (NumberFormatException exception) { output.append("Expected a valid price.\n"); return null; } }
-    private LocalDate date(String text, StringBuilder output) { if (text == null) return null; try {
-        return LocalDate.parse(text.trim(), FxFormatter.DATE_FORMAT); }
-        catch (RuntimeException exception) { output.append("Expiry must use dd-MM-yyyy.\n"); return null; } }
+    private Integer integer(String text, StringBuilder output) {
+        try {
+            return Integer.parseInt(text.trim());
+        } catch (NumberFormatException exception) {
+            output.append("Expected a whole number.\n");
+            return null;
+        }
+    }
+
+    private BigDecimal decimal(String text, StringBuilder output) {
+        try {
+            return new BigDecimal(text.trim());
+        } catch (NumberFormatException exception) {
+            output.append("Expected a valid price.\n");
+            return null;
+        }
+    }
+
+    private LocalDate date(String text, StringBuilder output) {
+        if (text == null) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(text.trim(), FxFormatter.DATE_FORMAT);
+        } catch (RuntimeException exception) {
+            output.append("Expiry must use dd-MM-yyyy.\n");
+            return null;
+        }
+    }
     private void appendItems(StringBuilder output, List<InventoryItem> items) {
         if (items.isEmpty()) {
             output.append("No matching items.\n");

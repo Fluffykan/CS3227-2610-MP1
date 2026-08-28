@@ -7,6 +7,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.TextArea;
+
 import stockie.application.result.SellItemResult;
 import stockie.application.result.SoldBatch;
 

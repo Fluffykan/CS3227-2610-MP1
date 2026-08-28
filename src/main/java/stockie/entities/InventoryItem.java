@@ -2,11 +2,12 @@ package stockie.entities;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import stockie.application.result.SoldBatch;
 import stockie.util.TextNormalizer;
 
@@ -20,6 +21,7 @@ public final class InventoryItem implements Serializable {
     private int totalQuantity;
     private BigDecimal totalCost = BigDecimal.ZERO;
 
+    /** Creates an item with a display name, SKU, and category. */
     public InventoryItem(String displayName, String sku, ItemCategory category) {
         if (displayName.isEmpty() || sku.isEmpty()) {
             throw new IllegalArgumentException("Item name and SKU must not be empty");
@@ -83,7 +85,9 @@ public final class InventoryItem implements Serializable {
         List<SoldBatch> soldBatches = new ArrayList<>();
         int remainingToSell = quantity;
         for (Map.Entry<String, Batch> entry : orderedBatches) {
-            if (remainingToSell == 0) break;
+            if (remainingToSell == 0) {
+                break;
+            }
             Batch batch = entry.getValue();
             int soldQuantity = Math.min(remainingToSell, batch.getQuantity());
             soldBatches.add(new SoldBatch(batch.getInvoiceNumber(), soldQuantity, batch.getUnitPrice()));

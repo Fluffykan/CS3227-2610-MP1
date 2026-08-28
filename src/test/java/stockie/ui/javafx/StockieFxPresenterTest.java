@@ -13,7 +13,6 @@ import stockie.application.command.CommandManager;
 import stockie.application.controller.StockieController;
 import stockie.application.request.AddBatchRequest;
 import stockie.application.service.InventoryService;
-import stockie.entities.ItemCategory;
 import stockie.storage.InventoryRepository;
 import stockie.ui.javafx.util.DashboardMetrics;
 import stockie.ui.javafx.util.InventoryRow;

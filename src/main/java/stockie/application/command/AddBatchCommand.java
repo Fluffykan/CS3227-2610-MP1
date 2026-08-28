@@ -1,9 +1,9 @@
 package stockie.application.command;
 
+import stockie.application.service.InventoryService;
 import stockie.entities.Batch;
 import stockie.entities.InventoryItem;
 import stockie.entities.ItemCategory;
-import stockie.application.service.InventoryService;
 
 /** Adds a batch and snapshots the previous item for undo. */
 public final class AddBatchCommand implements InventoryCommand {
@@ -17,6 +17,7 @@ public final class AddBatchCommand implements InventoryCommand {
     private boolean initialized;
     private boolean executed;
 
+    /** Creates a command that adds a batch to an item. */
     public AddBatchCommand(InventoryService inventory, String itemName, String itemKey,
             String sku, ItemCategory category, Batch batch) {
         this.inventory = inventory;

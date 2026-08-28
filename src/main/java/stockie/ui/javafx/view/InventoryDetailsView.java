@@ -12,6 +12,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+
 import stockie.ui.javafx.util.BatchRow;
 import stockie.ui.javafx.util.FxFormatter;
 import stockie.ui.javafx.util.InventoryRow;
@@ -26,6 +27,7 @@ public final class InventoryDetailsView {
     private final Label costLabel = new Label("-");
     private final TableView<BatchRow> table = new TableView<>();
 
+    /** Creates the inventory details table and its labels. */
     public InventoryDetailsView() {
         table.setItems(batches);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -44,6 +46,7 @@ public final class InventoryDetailsView {
         table.getColumns().setAll(invoiceColumn, quantityColumn, priceColumn, expiryColumn, upcColumn);
     }
 
+    /** Returns the JavaFX node containing the item details view. */
     public VBox node() {
         Label header = new Label("Item Details");
         header.getStyleClass().add("panel-header");
@@ -63,6 +66,7 @@ public final class InventoryDetailsView {
         return wrapper;
     }
 
+    /** Shows the selected inventory row and its batches. */
     public void show(InventoryRow row) {
         itemLabel.setText(row.itemName());
         skuLabel.setText(row.sku());
@@ -72,6 +76,7 @@ public final class InventoryDetailsView {
         batches.setAll(row.batches());
     }
 
+    /** Clears the selected item and batch details. */
     public void clear() {
         itemLabel.setText("No item selected");
         skuLabel.setText("-");

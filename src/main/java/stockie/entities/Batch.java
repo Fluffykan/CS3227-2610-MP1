@@ -11,6 +11,7 @@ public abstract class Batch implements Serializable {
     private final BigDecimal unitPrice;
     private final String upc;
 
+    /** Creates a batch with its invoice, quantity, price, and optional UPC. */
     public Batch(String invoiceNumber, int quantity, BigDecimal unitPrice, String upc) {
         this.invoiceNumber = invoiceNumber;
         this.quantity = quantity;

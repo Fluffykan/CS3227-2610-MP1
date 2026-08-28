@@ -14,6 +14,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+
 import stockie.ui.javafx.util.InventoryRow;
 
 /** Displays inventory rows and reports selection changes to the screen coordinator. */
@@ -21,6 +22,7 @@ public final class InventoryTableView {
     private final ObservableList<InventoryRow> rows = FXCollections.observableArrayList();
     private final TableView<InventoryRow> table = new TableView<>();
 
+    /** Creates the inventory table and connects its selection callback. */
     public InventoryTableView(Consumer<InventoryRow> selectionConsumer) {
         table.setItems(rows);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -44,6 +46,7 @@ public final class InventoryTableView {
         });
     }
 
+    /** Returns the JavaFX node containing the inventory table. */
     public VBox node() {
         Label header = new Label("Inventory");
         header.getStyleClass().add("panel-header");
@@ -53,6 +56,7 @@ public final class InventoryTableView {
         return wrapper;
     }
 
+    /** Replaces the table rows and selects the first row when available. */
     public void setRows(List<InventoryRow> newRows) {
         rows.setAll(newRows);
         if (!newRows.isEmpty()) {
@@ -60,6 +64,7 @@ public final class InventoryTableView {
         }
     }
 
+    /** Selects the first row in the table, if one exists. */
     public void selectFirst() {
         table.getSelectionModel().selectFirst();
     }

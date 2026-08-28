@@ -7,6 +7,7 @@ import java.time.LocalDate;
 public final class PerishableBatch extends Batch {
     private final LocalDate expiryDate;
 
+    /** Creates a perishable batch with an expiry date. */
     public PerishableBatch(String invoiceNumber, int quantity, BigDecimal unitPrice,
             LocalDate expiryDate, String upc) {
         super(invoiceNumber, quantity, unitPrice, upc);

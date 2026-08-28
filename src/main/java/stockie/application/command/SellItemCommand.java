@@ -1,11 +1,12 @@
 package stockie.application.command;
 
 import java.util.List;
+
+import stockie.application.result.SoldBatch;
 import stockie.application.service.InventoryService;
 import stockie.entities.Batch;
 import stockie.entities.InventoryItem;
 import stockie.entities.ItemCategory;
-import stockie.application.result.SoldBatch;
 
 /** Sells quantities from an item while retaining a snapshot for undo and redo. */
 public final class SellItemCommand implements InventoryCommand {
@@ -17,6 +18,7 @@ public final class SellItemCommand implements InventoryCommand {
     private boolean initialized;
     private boolean executed;
 
+    /** Creates a command that sells a quantity of an item. */
     public SellItemCommand(InventoryService inventory, String itemKey, int quantity) {
         this.inventory = inventory;
         this.itemKey = itemKey;

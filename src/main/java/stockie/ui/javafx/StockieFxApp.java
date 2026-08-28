@@ -32,10 +32,10 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
 import stockie.application.command.CommandManager;
 import stockie.application.controller.StockieController;
 import stockie.application.request.AddBatchRequest;
-import stockie.application.service.InventoryService;
 import stockie.application.result.AddBatchResult;
 import stockie.application.result.CommandResult;
 import stockie.application.result.FindQueryResult;
@@ -43,6 +43,7 @@ import stockie.application.result.RecallBatchResult;
 import stockie.application.result.RemoveItemResult;
 import stockie.application.result.SellItemResult;
 import stockie.application.result.UpdateSkuResult;
+import stockie.application.service.InventoryService;
 import stockie.entities.Batch;
 import stockie.entities.InventoryItem;
 import stockie.entities.PerishableBatch;
@@ -204,7 +205,8 @@ public final class StockieFxApp extends Application {
 
         Button expiringCustom = buildFilterButton("Apply", () -> {
             String text = expiringDaysField.getText().trim();
-            Integer days = parseIntConditional(text, value -> value > 0, "Days must be a positive whole number less than " + Integer.MAX_VALUE + ".");
+            Integer days = parseIntConditional(text, value -> value > 0,
+                    "Days must be a positive whole number less than " + Integer.MAX_VALUE + ".");
             if (days == null) {
                 return;
             }
@@ -426,8 +428,10 @@ public final class StockieFxApp extends Application {
         String itemName = itemField.getText().trim();
         String sku = skuField.getText().trim();
         String invoice = invoiceField.getText().trim();
-        Integer quantity = parseIntConditional(quantityField.getText(), value -> value > 0, "Quantity must be a positive whole number.");
-        BigDecimal unitPrice = parseNonNegativeDecimal(priceField.getText(), "Unit price must be a non-negative number.");
+        Integer quantity = parseIntConditional(quantityField.getText(), value -> value > 0,
+                "Quantity must be a positive whole number.");
+        BigDecimal unitPrice = parseNonNegativeDecimal(priceField.getText(),
+                "Unit price must be a non-negative number.");
         LocalDate expiry = expiryPicker.getValue();
         String upc = upcField.getText().trim().isEmpty() ? null : upcField.getText().trim();
 
@@ -611,7 +615,8 @@ public final class StockieFxApp extends Application {
 
         int quantity = 0;
         if (numericExtra) {
-            Integer parsed = parseIntConditional(extraValue, value -> value > 0, "Quantity must be a positive whole number.");
+            Integer parsed = parseIntConditional(extraValue, value -> value > 0,
+                    "Quantity must be a positive whole number.");
             if (parsed == null) {
                 return null;
             }
@@ -636,7 +641,8 @@ public final class StockieFxApp extends Application {
     private BatchRow toBatchRow(Batch batch) {
         LocalDate expiry = batch instanceof PerishableBatch
                 ? ((PerishableBatch) batch).getExpiryDate() : null;
-        return new BatchRow(batch.getInvoiceNumber(), batch.getQuantity(), batch.getUnitPrice(), expiry, batch.getUpc());
+        return new BatchRow(batch.getInvoiceNumber(), batch.getQuantity(), batch.getUnitPrice(),
+                expiry, batch.getUpc());
     }
 
     /** Parses and validates positive integers used by quantity inputs. */

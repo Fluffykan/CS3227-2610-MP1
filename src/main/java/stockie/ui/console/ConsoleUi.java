@@ -7,17 +7,19 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
+
 import stockie.application.command.InventoryCommand;
+import stockie.application.command.UpdateSkuCommand;
 import stockie.application.controller.StockieController;
 import stockie.application.request.AddBatchRequest;
 import stockie.application.result.AddBatchResult;
 import stockie.application.result.CommandResult;
-import stockie.application.result.ExpiringItem;
 import stockie.application.result.ExpiringBatchQueryResult;
+import stockie.application.result.ExpiringItem;
 import stockie.application.result.FindQueryResult;
 import stockie.application.result.ListQueryResult;
 import stockie.application.result.RecallBatchResult;
@@ -25,7 +27,6 @@ import stockie.application.result.RemoveItemResult;
 import stockie.application.result.SellItemResult;
 import stockie.application.result.SoldBatch;
 import stockie.application.result.UpdateSkuResult;
-import stockie.application.command.UpdateSkuCommand;
 import stockie.entities.Batch;
 import stockie.entities.InventoryItem;
 import stockie.entities.PerishableBatch;
@@ -37,8 +38,6 @@ public final class ConsoleUi {
     /** Formats expiry dates as day-month-year. */
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd-MM-uuuu")
             .withResolverStyle(ResolverStyle.STRICT);
-    /** Provides UI-independent inventory operations. */
-    private final StockieController controller;
     /** Required field groups for the add command; each group requires one supplied field. */
     private static final List<List<String>> ADD_REQUIRED_FIELDS = List.of(
             List.of("item"), List.of("sku"), List.of("invoice"), List.of("quantity"),
@@ -65,6 +64,8 @@ public final class ConsoleUi {
             List.of("item", "current-sku", "sku");
     /** Fields accepted by the find command; exactly one must be supplied. */
     private static final List<String> FIND_SUPPORTED_FIELDS = List.of("item", "sku");
+    /** Provides UI-independent inventory operations. */
+    private final StockieController controller;
 
     public ConsoleUi(StockieController controller) {
         this.controller = controller;
@@ -109,21 +110,43 @@ public final class ConsoleUi {
 
     /** Routes a command using its first whitespace-delimited word. */
     private void processCommand(String input, Scanner scanner) {
-        if (input.isEmpty()) return;
+        if (input.isEmpty()) {
+            return;
+        }
         int separator = input.indexOf(' ');
         String command = (separator < 0 ? input : input.substring(0, separator)).toLowerCase(Locale.ROOT);
         String arguments = separator < 0 ? "" : input.substring(separator + 1).trim();
         switch (command) {
-        case "add": addBatch(arguments, scanner); break;
-        case "recall": recallBatch(arguments); break;
-        case "remove": removeItem(arguments, scanner); break;
-        case "sell": sellItem(arguments); break;
-        case "update-sku": updateSku(arguments); break;
-        case "list": list(arguments); break;
-        case "find": find(arguments); break;
-        case "undo": undo(); break;
-        case "redo": redo(); break;
-        case "help": printHelp(arguments); break;
+        case "add":
+            addBatch(arguments, scanner);
+            break;
+        case "recall":
+            recallBatch(arguments);
+            break;
+        case "remove":
+            removeItem(arguments, scanner);
+            break;
+        case "sell":
+            sellItem(arguments);
+            break;
+        case "update-sku":
+            updateSku(arguments);
+            break;
+        case "list":
+            list(arguments);
+            break;
+        case "find":
+            find(arguments);
+            break;
+        case "undo":
+            undo();
+            break;
+        case "redo":
+            redo();
+            break;
+        case "help":
+            printHelp(arguments);
+            break;
         default:
             System.out.println(" I'm not too sure what you mean, did you use the right command?");
             System.out.println(" Type \"help\" to find the list of commands available");
@@ -168,7 +191,9 @@ public final class ConsoleUi {
         LocalDate expiryDate = parseExpiryDate(expiryText);
         boolean hasExpiry = expiryText != null;
         String upc = fields.get("upc");
-        if (quantity == null || unitPrice == null || (hasExpiry && expiryDate == null)) return;
+        if (quantity == null || unitPrice == null || (hasExpiry && expiryDate == null)) {
+            return;
+        }
 
         if (expiryDate != null && expiryDate.isBefore(LocalDate.now())) {
             System.out.println(" warning: this batch expired on "
@@ -214,7 +239,9 @@ public final class ConsoleUi {
                 System.out.println(" values must follow a named field such as --item");
                 return null;
             } else {
-                if (currentValue.length() > 0) currentValue.append(' ');
+                if (currentValue.length() > 0) {
+                    currentValue.append(' ');
+                }
                 currentValue.append(token);
             }
         }
@@ -232,10 +259,14 @@ public final class ConsoleUi {
                 }
             }
             if (!hasRequiredField) {
-                if (missing.length() > 0) missing.append(", ");
+                if (missing.length() > 0) {
+                    missing.append(", ");
+                }
                 boolean firstFieldInGroup = true;
                 for (String field : requiredFieldGroup) {
-                    if (!firstFieldInGroup) missing.append(" or ");
+                    if (!firstFieldInGroup) {
+                        missing.append(" or ");
+                    }
                     missing.append("--").append(field);
                     firstFieldInGroup = false;
                 }
@@ -271,7 +302,9 @@ public final class ConsoleUi {
     private void recallBatch(String arguments) {
         Map<String, String> fields = parseNamedArguments(arguments,
                 RECALL_REQUIRED_FIELDS, RECALL_SUPPORTED_FIELDS);
-        if (fields == null) return;
+        if (fields == null) {
+            return;
+        }
         if (fields.containsKey("item") == fields.containsKey("sku")) {
             System.out.println(" usage: recall (--item <name> | --sku <sku>) --invoice <invoice>");
             return;
@@ -296,7 +329,9 @@ public final class ConsoleUi {
     private void removeItem(String arguments, Scanner scanner) {
         Map<String, String> fields = parseNamedArguments(arguments,
                 REMOVE_REQUIRED_FIELDS, REMOVE_SUPPORTED_FIELDS);
-        if (fields == null) return;
+        if (fields == null) {
+            return;
+        }
         if (fields.containsKey("item") == fields.containsKey("sku")) {
             System.out.println(" usage: remove (--item <name> | --sku <sku>)");
             return;
@@ -329,13 +364,17 @@ public final class ConsoleUi {
     private void sellItem(String arguments) {
         Map<String, String> fields = parseNamedArguments(arguments,
                 SELL_REQUIRED_FIELDS, SELL_SUPPORTED_FIELDS);
-        if (fields == null) return;
+        if (fields == null) {
+            return;
+        }
         if (fields.containsKey("item") == fields.containsKey("sku")) {
             System.out.println(" usage: sell (--item <name> | --sku <sku>) --quantity <quantity>");
             return;
         }
         Integer quantity = parsePositiveQuantity(fields.get("quantity"));
-        if (quantity == null) return;
+        if (quantity == null) {
+            return;
+        }
         SellItemResult result = fields.containsKey("item")
                 ? controller.sellItemByName(fields.get("item"), quantity)
                 : controller.sellItemBySku(fields.get("sku"), quantity);
@@ -354,7 +393,9 @@ public final class ConsoleUi {
     private void updateSku(String arguments) {
         Map<String, String> fields = parseNamedArguments(arguments, List.of(List.of("sku")),
                 UPDATE_SKU_SUPPORTED_FIELDS);
-        if (fields == null) return;
+        if (fields == null) {
+            return;
+        }
         if (fields.containsKey("item") == fields.containsKey("current-sku")) {
             System.out.println(" usage: update-sku (--item <name> | --current-sku <old sku>)"
                     + " --sku <new sku>");
@@ -384,7 +425,9 @@ public final class ConsoleUi {
             String[] listArguments = arguments.split("\\s+");
             if (listArguments.length == 2 && listArguments[0].equalsIgnoreCase("expiring-in")) {
                 Integer days = parseNonNegativeDays(listArguments[1]);
-                if (days != null) displayExpiringBatches(controller.listExpiringBatches(days));
+                if (days != null) {
+                    displayExpiringBatches(controller.listExpiringBatches(days));
+                }
                 return;
             }
             System.out.println(" usage: list [depleted | expired | expiring-in <days>]");
@@ -419,8 +462,12 @@ public final class ConsoleUi {
     private static Integer parseNonNegativeDays(String text) {
         try {
             int days = Integer.parseInt(text);
-            if (days >= 0) return days;
-        } catch (NumberFormatException ignored) { }
+            if (days >= 0) {
+                return days;
+            }
+        } catch (NumberFormatException ignored) {
+            // Invalid numeric input is reported below.
+        }
         System.out.println(" days must be a non-negative whole number");
         return null;
     }
@@ -428,7 +475,9 @@ public final class ConsoleUi {
     /** Parses a find request before delegating the lookup to the controller. */
     private void find(String arguments) {
         Map<String, String> fields = parseNamedArguments(arguments, List.of(), FIND_SUPPORTED_FIELDS);
-        if (fields == null) return;
+        if (fields == null) {
+            return;
+        }
         if (fields.size() != 1) {
             System.out.println(" usage: find --item <name> or find --sku <sku>");
             return;
@@ -560,8 +609,12 @@ public final class ConsoleUi {
         }
         try {
             int quantity = Integer.parseInt(text);
-            if (quantity > 0) return quantity;
-        } catch (NumberFormatException ignored) { }
+            if (quantity > 0) {
+                return quantity;
+            }
+        } catch (NumberFormatException ignored) {
+            // Invalid numeric input is reported below.
+        }
         System.out.println(" quantity must be a positive whole number");
         return null;
     }
@@ -574,15 +627,21 @@ public final class ConsoleUi {
         }
         try {
             BigDecimal price = new BigDecimal(text);
-            if (price.signum() >= 0) return price;
-        } catch (NumberFormatException ignored) { }
+            if (price.signum() >= 0) {
+                return price;
+            }
+        } catch (NumberFormatException ignored) {
+            // Invalid numeric input is reported below.
+        }
         System.out.println(" unit price must be a non-negative number");
         return null;
     }
 
     /** Parses an optional expiry date in dd-MM-yyyy format. */
     private static LocalDate parseExpiryDate(String text) {
-        if (text == null) return null;
+        if (text == null) {
+            return null;
+        }
         try {
             return LocalDate.parse(text, DATE_FORMAT);
         } catch (DateTimeParseException ignored) {

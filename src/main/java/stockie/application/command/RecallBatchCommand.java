@@ -1,9 +1,9 @@
 package stockie.application.command;
 
+import stockie.application.service.InventoryService;
 import stockie.entities.Batch;
 import stockie.entities.InventoryItem;
 import stockie.entities.ItemCategory;
-import stockie.application.service.InventoryService;
 
 /** Recalls a batch and snapshots the complete item for undo. */
 public final class RecallBatchCommand implements InventoryCommand {
@@ -14,6 +14,7 @@ public final class RecallBatchCommand implements InventoryCommand {
     private boolean initialized;
     private boolean executed;
 
+    /** Creates a command that recalls a batch from an item. */
     public RecallBatchCommand(InventoryService inventory, String itemKey, String invoiceKey) {
         this.inventory = inventory;
         this.itemKey = itemKey;

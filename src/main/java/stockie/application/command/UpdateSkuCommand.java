@@ -13,6 +13,7 @@ public final class UpdateSkuCommand implements InventoryCommand {
     private boolean initialized;
     private boolean executed;
 
+    /** Creates a command that updates an item's SKU. */
     public UpdateSkuCommand(InventoryService inventory, String itemKey, String newSku) {
         this.inventory = inventory;
         this.itemKey = itemKey;

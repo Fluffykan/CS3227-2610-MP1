@@ -13,6 +13,7 @@ public final class RemoveItemCommand implements InventoryCommand {
     private boolean initialized;
     private boolean executed;
 
+    /** Creates a command that removes an item from inventory. */
     public RemoveItemCommand(InventoryService inventory, String itemKey) {
         this.inventory = inventory;
         this.itemKey = itemKey;

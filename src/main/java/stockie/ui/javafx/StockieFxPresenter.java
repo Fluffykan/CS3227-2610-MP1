@@ -27,6 +27,7 @@ public final class StockieFxPresenter {
     private final Consumer<String> statusConsumer;
     private final Runnable clearDetails;
 
+    /** Creates a presenter connected to controller queries and view callbacks. */
     public StockieFxPresenter(StockieController controller,
             Consumer<List<InventoryRow>> rowsConsumer,
             Consumer<DashboardMetrics> metricsConsumer,
@@ -48,6 +49,7 @@ public final class StockieFxPresenter {
         case EXPIRED -> applyExpiringResult(controller.listExpiredBatches(), "Showing expired batches");
         case EXPIRING -> applyExpiringResult(controller.listExpiringBatches(expiringInDays),
                 "Showing batches expiring in " + expiringInDays + " days");
+        default -> throw new IllegalArgumentException("Unknown view mode: " + viewMode);
         }
     }
 

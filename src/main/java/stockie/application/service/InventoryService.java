@@ -1,19 +1,19 @@
 package stockie.application.service;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import stockie.application.exception.ItemNotFoundException;
+import stockie.application.result.SoldBatch;
 import stockie.entities.Batch;
 import stockie.entities.InventoryItem;
 import stockie.entities.ItemCategory;
 import stockie.entities.PerishableBatch;
-import stockie.application.exception.ItemNotFoundException;
-import stockie.application.result.SoldBatch;
 import stockie.storage.InventoryRepository;
 import stockie.util.TextNormalizer;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
 
 /** Owns inventory mutations and creates defensive copies for command history. */
 public final class InventoryService {
@@ -21,6 +21,7 @@ public final class InventoryService {
     /** Secondary index from normalized SKU to the canonical item object. */
     private HashMap<String, InventoryItem> itemsBySku = new HashMap<>();
 
+    /** Loads, validates, and indexes persisted inventory, skipping corrupted entries. */
     public List<String> load(InventoryRepository repository) throws IOException, ClassNotFoundException {
         HashMap<String, InventoryItem> loadedItems = repository.load();
         HashMap<String, InventoryItem> validItems = new HashMap<>();
@@ -55,6 +56,7 @@ public final class InventoryService {
     public java.util.Collection<InventoryItem> values() { return items.values(); }
     public int size() { return items.size(); }
 
+    /** Adds a batch while maintaining item category and SKU invariants. */
     public void addBatch(String itemKey, String itemName, String sku,
             ItemCategory category, Batch batch) {
         InventoryItem item = items.get(itemKey);
@@ -117,11 +119,13 @@ public final class InventoryService {
         itemsBySku.put(TextNormalizer.normalize(newSku), item);
     }
 
+    /** Returns a defensive copy of an item for command history. */
     public InventoryItem copyItem(String itemKey) {
         InventoryItem item = items.get(itemKey);
         return item == null ? null : item.deepCopy();
     }
 
+    /** Restores an item snapshot and rebuilds its SKU index entry. */
     public void restoreItem(String itemKey, InventoryItem item) {
         InventoryItem current = items.remove(itemKey);
         if (current != null) {

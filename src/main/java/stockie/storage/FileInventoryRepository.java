@@ -1,7 +1,5 @@
 package stockie.storage;
 
-import stockie.entities.InventoryItem;
-
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -9,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
+
+import stockie.entities.InventoryItem;
 
 /** Persists inventory snapshots using an atomic temporary-file replacement. */
 public final class FileInventoryRepository implements InventoryRepository {

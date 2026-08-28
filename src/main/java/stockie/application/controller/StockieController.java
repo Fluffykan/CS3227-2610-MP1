@@ -4,17 +4,6 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
-import stockie.application.request.AddBatchRequest;
-import stockie.application.result.AddBatchResult;
-import stockie.application.result.CommandResult;
-import stockie.application.result.ExpiringItem;
-import stockie.application.result.ExpiringBatchQueryResult;
-import stockie.application.result.FindQueryResult;
-import stockie.application.result.ListQueryResult;
-import stockie.application.result.RecallBatchResult;
-import stockie.application.result.RemoveItemResult;
-import stockie.application.result.SellItemResult;
-import stockie.application.result.UpdateSkuResult;
 import stockie.application.command.AddBatchCommand;
 import stockie.application.command.CommandManager;
 import stockie.application.command.InventoryCommand;
@@ -22,13 +11,24 @@ import stockie.application.command.RecallBatchCommand;
 import stockie.application.command.RemoveItemCommand;
 import stockie.application.command.SellItemCommand;
 import stockie.application.command.UpdateSkuCommand;
+import stockie.application.request.AddBatchRequest;
+import stockie.application.result.AddBatchResult;
+import stockie.application.result.CommandResult;
+import stockie.application.result.ExpiringBatchQueryResult;
+import stockie.application.result.ExpiringItem;
+import stockie.application.result.FindQueryResult;
+import stockie.application.result.ListQueryResult;
+import stockie.application.result.RecallBatchResult;
+import stockie.application.result.RemoveItemResult;
+import stockie.application.result.SellItemResult;
+import stockie.application.result.UpdateSkuResult;
+import stockie.application.service.InventoryQueryService;
 import stockie.application.service.InventoryService;
 import stockie.entities.Batch;
 import stockie.entities.InventoryItem;
 import stockie.entities.ItemCategory;
 import stockie.entities.NonPerishableBatch;
 import stockie.entities.PerishableBatch;
-import stockie.application.service.InventoryQueryService;
 import stockie.storage.InventoryRepository;
 import stockie.util.TextNormalizer;
 
@@ -40,6 +40,7 @@ public final class StockieController {
     private final CommandManager commandManager;
     private final InventoryRepository repository;
 
+    /** Creates a controller backed by the supplied inventory and persistence services. */
     public StockieController(InventoryService inventory, CommandManager commandManager,
             InventoryRepository repository) {
         this.inventory = inventory;
@@ -215,14 +216,18 @@ public final class StockieController {
     /** Sells stock after locating an item by its SKU. */
     public SellItemResult sellItemBySku(String sku, int quantity) {
         InventoryItem item = inventory.getBySku(TextNormalizer.normalize(sku));
-        if (item == null) return new SellItemResult(null, List.of(), " item not found: " + sku);
+        if (item == null) {
+            return new SellItemResult(null, List.of(), " item not found: " + sku);
+        }
         return sellItem(TextNormalizer.normalize(item.getDisplayName()), sku, quantity);
     }
 
     /** Validates stock availability, then executes a reversible sale. */
     private SellItemResult sellItem(String itemKey, String identifier, int quantity) {
         InventoryItem item = inventory.get(itemKey);
-        if (item == null) return new SellItemResult(null, List.of(), " item not found: " + identifier);
+        if (item == null) {
+            return new SellItemResult(null, List.of(), " item not found: " + identifier);
+        }
         if (quantity <= 0) {
             return new SellItemResult(null, List.of(), " quantity must be positive");
         }
