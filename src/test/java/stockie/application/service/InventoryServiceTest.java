@@ -42,6 +42,26 @@ class InventoryServiceTest {
     }
 
     @Test
+    void addBatchExistingItemWithMismatchedCategoryRejectsBatch() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 2));
+
+        assertThrows(IllegalArgumentException.class, () -> service.addBatch("milk", "Milk", "MILK",
+                ItemCategory.PERISHABLE, batch("INV-2", 1)));
+        assertEquals(2, service.get("milk").getTotalQuantity());
+    }
+
+    @Test
+    void addBatchExistingItemWithMismatchedSkuRejectsBatch() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 2));
+
+        assertThrows(IllegalArgumentException.class, () -> service.addBatch("milk", "Milk", "OTHER",
+                ItemCategory.NON_PERISHABLE, batch("INV-2", 1)));
+        assertEquals(2, service.get("milk").getTotalQuantity());
+    }
+
+    @Test
     void addBatchNormalizesInvoiceNumberForStorage() {
         InventoryService service = new InventoryService();
         service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE,
@@ -72,6 +92,17 @@ class InventoryServiceTest {
     }
 
     @Test
+    void sellInvalidQuantityRejectsMutation() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 3));
+
+        assertThrows(IllegalArgumentException.class, () -> service.sell("milk", 0));
+        assertThrows(IllegalArgumentException.class, () -> service.sell("milk", -1));
+        assertThrows(IllegalArgumentException.class, () -> service.sell("milk", 4));
+        assertEquals(3, service.get("milk").getTotalQuantity());
+    }
+
+    @Test
     void recallBatchExistingBatchRemovesBatchAndUpdatesTotals() {
         InventoryService service = new InventoryService();
         service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 2));
@@ -80,6 +111,15 @@ class InventoryServiceTest {
 
         assertEquals(0, service.get("milk").getTotalQuantity());
         assertNull(service.get("milk").getBatches().get("inv-1"));
+    }
+
+    @Test
+    void recallMissingBatchThrowsControlledException() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 2));
+
+        assertThrows(IllegalArgumentException.class, () -> service.recallBatch("milk", "missing"));
+        assertEquals(2, service.get("milk").getTotalQuantity());
     }
 
     @Test
@@ -162,6 +202,76 @@ class InventoryServiceTest {
     void updateSkuMissingItemThrowsItemNotFoundException() {
         assertThrows(ItemNotFoundException.class,
                 () -> new InventoryService().updateSku("missing", "SKU"));
+    }
+
+    @Test
+    void updateSkuEmptyValueRejectsUpdate() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 1));
+
+        assertThrows(IllegalArgumentException.class, () -> service.updateSku("milk", ""));
+        assertEquals("MILK", service.get("milk").getSku());
+    }
+
+    @Test
+    void updateSkuDuplicateNormalizedValueRejectsUpdate() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 1));
+        service.addBatch("bread", "Bread", "BREAD", ItemCategory.NON_PERISHABLE, batch("INV-2", 1));
+
+        assertThrows(IllegalArgumentException.class, () -> service.updateSku("milk", "bread"));
+        assertEquals("MILK", service.get("milk").getSku());
+    }
+
+    @Test
+    void removeMissingItemLeavesInventoryAndSkuIndexUnchanged() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 1));
+
+        service.removeItem("missing");
+
+        assertEquals(1, service.size());
+        assertNotNull(service.getBySku("milk"));
+    }
+
+    @Test
+    void restoreNullItemRemovesExistingItemAndSkuIndex() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 1));
+
+        service.restoreItem("milk", null);
+
+        assertNull(service.get("milk"));
+        assertNull(service.getBySku("milk"));
+    }
+
+    @Test
+    void restoreItemRebuildsSkuIndexWithIndependentCopy() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 1));
+        InventoryItem snapshot = service.copyItem("milk");
+
+        service.updateSku("milk", "NEW-MILK");
+        service.restoreItem("milk", snapshot);
+
+        assertEquals("MILK", service.getBySku("milk").getSku());
+        assertNull(service.getBySku("new-milk"));
+        assertEquals(1, service.get("milk").getTotalQuantity());
+    }
+
+    @Test
+    void loadNullRepositoryDataThrowsControlledException() {
+        InventoryRepository repository = new InventoryRepository() {
+            @Override
+            public HashMap<String, InventoryItem> load() {
+                return null;
+            }
+
+            @Override
+            public void save(HashMap<String, InventoryItem> snapshot) { }
+        };
+
+        assertThrows(IllegalStateException.class, () -> new InventoryService().load(repository));
     }
 
     private static InventoryItem item(String name, String sku) {

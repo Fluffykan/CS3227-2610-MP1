@@ -62,6 +62,10 @@ public final class InventoryService {
             item = new InventoryItem(itemName, sku, category);
             items.put(itemKey, item);
             itemsBySku.put(TextNormalizer.normalize(sku), item);
+        } else if (item.getCategory() != category) {
+            throw new IllegalArgumentException("Item category does not match existing item");
+        } else if (!TextNormalizer.normalize(item.getSku()).equals(TextNormalizer.normalize(sku))) {
+            throw new IllegalArgumentException("SKU does not match existing item");
         }
         item.addBatch(TextNormalizer.normalize(batch.getInvoiceNumber()), batch.getInvoiceNumber(),
                 batch.getQuantity(), batch.getUnitPrice(),
@@ -97,9 +101,16 @@ public final class InventoryService {
 
     /** Changes an item's SKU while keeping the secondary SKU index synchronized. */
     public void updateSku(String itemKey, String newSku) {
+        if (newSku == null || newSku.isEmpty()) {
+            throw new IllegalArgumentException("SKU must not be empty");
+        }
         InventoryItem item = items.get(itemKey);
         if (item == null) {
             throw new ItemNotFoundException(itemKey);
+        }
+        InventoryItem itemWithNewSku = itemsBySku.get(TextNormalizer.normalize(newSku));
+        if (itemWithNewSku != null && itemWithNewSku != item) {
+            throw new IllegalArgumentException("SKU already exists: " + newSku);
         }
         itemsBySku.remove(TextNormalizer.normalize(item.getSku()));
         item.setSku(newSku);
