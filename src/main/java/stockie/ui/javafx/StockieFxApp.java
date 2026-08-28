@@ -92,7 +92,11 @@ public final class StockieFxApp extends Application {
             this::bindDetailPanel, this::refreshCurrentView,
             this::toInventoryRow);
         try {
-            controller.load();
+            List<String> skippedItems = controller.load();
+            if (!skippedItems.isEmpty()) {
+                showWarning("Skipped " + skippedItems.size() + " corrupted inventory entr"
+                        + (skippedItems.size() == 1 ? "y" : "ies") + ".");
+            }
         } catch (Exception exception) {
             showWarning("Unable to load saved inventory. Starting with an empty inventory.");
         }

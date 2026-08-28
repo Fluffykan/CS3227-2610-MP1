@@ -49,7 +49,7 @@ public final class StockieController {
     }
 
     /** Loads the most recently persisted inventory snapshot. */
-    public void load() throws IOException, ClassNotFoundException { inventory.load(repository); }
+    public List<String> load() throws IOException, ClassNotFoundException { return inventory.load(repository); }
 
     /** Adds a batch after enforcing inventory-wide uniqueness and consistency rules. */
     public AddBatchResult addBatch(AddBatchRequest request) {

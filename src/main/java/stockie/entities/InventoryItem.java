@@ -21,6 +21,9 @@ public final class InventoryItem implements Serializable {
     private BigDecimal totalCost = BigDecimal.ZERO;
 
     public InventoryItem(String displayName, String sku, ItemCategory category) {
+        if (displayName.isEmpty() || sku.isEmpty()) {
+            throw new IllegalArgumentException("Item name and SKU must not be empty");
+        }
         this.displayName = displayName;
         this.sku = sku;
         this.category = category;
@@ -31,6 +34,9 @@ public final class InventoryItem implements Serializable {
     /** Creates the correct batch subtype and updates aggregate totals. */
     public void addBatch(String invoiceKey, String invoiceNumber, int quantity,
             BigDecimal unitPrice, java.time.LocalDate expiryDate, String upc) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Batch quantity must be positive");
+        }
         Batch batch = category == ItemCategory.PERISHABLE
                 ? new PerishableBatch(invoiceNumber, quantity, unitPrice, expiryDate, upc)
                 : new NonPerishableBatch(invoiceNumber, quantity, unitPrice, upc);

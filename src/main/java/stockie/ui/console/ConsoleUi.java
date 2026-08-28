@@ -73,7 +73,11 @@ public final class ConsoleUi {
     /** Greets the user, processes commands, and exits on {@code bye}. */
     public void start() {
         try {
-            controller.load();
+            List<String> skippedItems = controller.load();
+            if (!skippedItems.isEmpty()) {
+                System.out.println(" Skipped " + skippedItems.size()
+                        + " corrupted inventory entr" + (skippedItems.size() == 1 ? "y" : "ies") + ".");
+            }
         } catch (Exception exception) {
             System.out.println(" Unable to load saved inventory; starting with an empty inventory.");
         }
