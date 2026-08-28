@@ -223,6 +223,9 @@ public final class StockieController {
     private SellItemResult sellItem(String itemKey, String identifier, int quantity) {
         InventoryItem item = inventory.get(itemKey);
         if (item == null) return new SellItemResult(null, List.of(), " item not found: " + identifier);
+        if (quantity <= 0) {
+            return new SellItemResult(null, List.of(), " quantity must be positive");
+        }
         if (quantity > item.getTotalQuantity()) {
             return new SellItemResult(null, List.of(), " insufficient stock: " + item.getDisplayName());
         }
