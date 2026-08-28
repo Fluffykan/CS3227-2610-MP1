@@ -53,6 +53,37 @@ class CommandManagerTest {
         assertEquals(0, inventory.size());
     }
 
+    @Test
+    void undoSaveFailureRestoresTheUndoneState() throws IOException {
+        InventoryService inventory = new InventoryService();
+        FailingOnNextSaveRepository repository = new FailingOnNextSaveRepository();
+        CommandManager manager = new CommandManager(inventory, repository);
+        AddBatchCommand command = new AddBatchCommand(inventory, "Milk", "milk", "MILK",
+                ItemCategory.NON_PERISHABLE, new NonPerishableBatch("INV-1", 2, BigDecimal.TEN, "123"));
+
+        manager.execute(command);
+        repository.failNextSave = true;
+
+        assertThrows(IOException.class, manager::undo);
+        assertEquals(2, inventory.get("milk").getTotalQuantity());
+    }
+
+    @Test
+    void redoSaveFailureRestoresTheUndoneState() throws IOException {
+        InventoryService inventory = new InventoryService();
+        FailingOnNextSaveRepository repository = new FailingOnNextSaveRepository();
+        CommandManager manager = new CommandManager(inventory, repository);
+        AddBatchCommand command = new AddBatchCommand(inventory, "Milk", "milk", "MILK",
+                ItemCategory.NON_PERISHABLE, new NonPerishableBatch("INV-1", 2, BigDecimal.TEN, "123"));
+
+        manager.execute(command);
+        manager.undo();
+        repository.failNextSave = true;
+
+        assertThrows(IOException.class, manager::redo);
+        assertEquals(0, inventory.size());
+    }
+
     private static class RecordingRepository implements InventoryRepository {
         private HashMap<String, stockie.entities.InventoryItem> saved = new HashMap<>();
 
@@ -71,6 +102,19 @@ class CommandManagerTest {
         @Override
         public void save(HashMap<String, InventoryItem> snapshot) throws IOException {
             throw new IOException("save failed");
+        }
+    }
+
+    private static final class FailingOnNextSaveRepository extends RecordingRepository {
+        private boolean failNextSave;
+
+        @Override
+        public void save(HashMap<String, InventoryItem> snapshot) throws IOException {
+            if (failNextSave) {
+                failNextSave = false;
+                throw new IOException("save failed");
+            }
+            super.save(snapshot);
         }
     }
 }
