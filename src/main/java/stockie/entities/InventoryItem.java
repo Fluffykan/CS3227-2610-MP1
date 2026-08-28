@@ -37,6 +37,9 @@ public final class InventoryItem implements Serializable {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Batch quantity must be positive");
         }
+        if (batches.containsKey(invoiceKey)) {
+            throw new IllegalArgumentException("Batch invoice already exists: " + invoiceNumber);
+        }
         Batch batch = category == ItemCategory.PERISHABLE
                 ? new PerishableBatch(invoiceNumber, quantity, unitPrice, expiryDate, upc)
                 : new NonPerishableBatch(invoiceNumber, quantity, unitPrice, upc);
@@ -48,6 +51,9 @@ public final class InventoryItem implements Serializable {
     /** Recalls the batch identified by its normalized invoice number. */
     public Batch recallBatch(String invoiceKey) {
         Batch batch = batches.remove(invoiceKey);
+        if (batch == null) {
+            throw new IllegalArgumentException("Batch not found: " + invoiceKey);
+        }
         totalQuantity -= batch.getQuantity();
         totalCost = totalCost.subtract(batch.getTotalCost());
         return batch;
@@ -58,6 +64,12 @@ public final class InventoryItem implements Serializable {
      * Perishables are consumed by earliest expiry; non-perishables by invoice number.
      */
     public List<SoldBatch> sell(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Sale quantity must be positive");
+        }
+        if (quantity > totalQuantity) {
+            throw new IllegalArgumentException("Sale quantity exceeds available stock");
+        }
         Comparator<Map.Entry<String, Batch>> saleOrder = category == ItemCategory.PERISHABLE
                 ? Comparator.comparing((Map.Entry<String, Batch> entry) ->
                         ((PerishableBatch) entry.getValue()).getExpiryDate())

@@ -108,6 +108,16 @@ class InventoryItemTest {
     }
 
     @Test
+    void addDuplicateInvoiceRejectsBatchWithoutChangingTotals() {
+        InventoryItem item = itemWithBatch(3);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> item.addBatch("inv-1", "INV-1", 2, UNIT_PRICE, null, "456"));
+        assertEquals(3, item.getTotalQuantity());
+        assertEquals(1, item.getBatches().size());
+    }
+
+    @Test
     void addBatchZeroQuantityRejectsBatch() {
         InventoryItem item = new InventoryItem("Milk", "MILK-1", ItemCategory.PERISHABLE);
 
@@ -157,5 +167,60 @@ class InventoryItemTest {
     void addBatchEmptyNameRejectsItem() {
         assertThrows(IllegalArgumentException.class,
                 () -> new InventoryItem("", "MILK-1", ItemCategory.NON_PERISHABLE));
+    }
+
+    @Test
+    void sellZeroQuantityRejectsQuantity() {
+        InventoryItem item = itemWithBatch(3);
+
+        assertThrows(IllegalArgumentException.class, () -> item.sell(0));
+        assertEquals(3, item.getTotalQuantity());
+    }
+
+    @Test
+    void sellNegativeQuantityRejectsQuantity() {
+        InventoryItem item = itemWithBatch(3);
+
+        assertThrows(IllegalArgumentException.class, () -> item.sell(-1));
+        assertEquals(3, item.getTotalQuantity());
+    }
+
+    @Test
+    void sellMoreThanAvailableQuantityRejectsQuantity() {
+        InventoryItem item = itemWithBatch(3);
+
+        assertThrows(IllegalArgumentException.class, () -> item.sell(4));
+        assertEquals(3, item.getTotalQuantity());
+    }
+
+    @Test
+    void sellEmptyInventoryRejectsPositiveQuantity() {
+        InventoryItem item = new InventoryItem("Milk", "MILK-1", ItemCategory.NON_PERISHABLE);
+
+        assertThrows(IllegalArgumentException.class, () -> item.sell(1));
+    }
+
+    @Test
+    void recallMissingInvoiceThrowsException() {
+        InventoryItem item = itemWithBatch(3);
+
+        assertThrows(IllegalArgumentException.class, () -> item.recallBatch("missing"));
+        assertEquals(3, item.getTotalQuantity());
+    }
+
+    @Test
+    void sellPerishableBatchesWithSameExpiryUsesInvoiceOrder() {
+        InventoryItem item = new InventoryItem("Milk", "MILK-1", ItemCategory.PERISHABLE);
+        LocalDate expiry = LocalDate.of(2026, 9, 1);
+        item.addBatch("z", "Z-INV", 1, UNIT_PRICE, expiry, "123");
+        item.addBatch("a", "A-INV", 1, UNIT_PRICE, expiry, "456");
+
+        assertEquals("A-INV", item.sell(1).get(0).invoiceNumber());
+    }
+
+    private static InventoryItem itemWithBatch(int quantity) {
+        InventoryItem item = new InventoryItem("Milk", "MILK-1", ItemCategory.NON_PERISHABLE);
+        item.addBatch("inv-1", "INV-1", quantity, UNIT_PRICE, null, "123");
+        return item;
     }
 }
