@@ -32,7 +32,9 @@ public final class CommandManager {
     }
 
     public InventoryCommand undo() throws IOException {
-        if (undoStack.isEmpty()) throw new IllegalStateException();
+        if (undoStack.isEmpty()) {
+            throw new IllegalStateException();
+        }
         InventoryCommand command = undoStack.pop();
         command.undo();
         try {
@@ -47,7 +49,9 @@ public final class CommandManager {
     }
 
     public InventoryCommand redo() throws IOException {
-        if (redoStack.isEmpty()) throw new IllegalStateException();
+        if (redoStack.isEmpty()) {
+            throw new IllegalStateException();
+        }
         InventoryCommand command = redoStack.pop();
         command.execute();
         try {

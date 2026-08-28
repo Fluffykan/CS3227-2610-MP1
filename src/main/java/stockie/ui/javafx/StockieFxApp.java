@@ -32,18 +32,17 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import stockie.application.service.InventoryService;
+import stockie.application.command.CommandManager;
 import stockie.application.controller.StockieController;
 import stockie.application.request.AddBatchRequest;
+import stockie.application.service.InventoryService;
 import stockie.application.result.AddBatchResult;
 import stockie.application.result.CommandResult;
-import stockie.application.result.ExpiringItem;
 import stockie.application.result.FindQueryResult;
 import stockie.application.result.RecallBatchResult;
 import stockie.application.result.RemoveItemResult;
 import stockie.application.result.SellItemResult;
 import stockie.application.result.UpdateSkuResult;
-import stockie.application.command.CommandManager;
 import stockie.entities.Batch;
 import stockie.entities.InventoryItem;
 import stockie.entities.PerishableBatch;
@@ -276,7 +275,6 @@ public final class StockieFxApp extends Application {
         return card;
     }
 
-    /** Builds the inventory master table. */
     /** Builds operation buttons that call corresponding controller methods. */
     private HBox buildActionBar() {
         Button addButton = new Button("Add Batch");
@@ -628,20 +626,6 @@ public final class StockieFxApp extends Application {
         return new InventoryRow(item.getDisplayName(), item.getSku(),
                 item.getCategory().name().toLowerCase(Locale.ROOT),
                 item.getTotalQuantity(), item.getTotalCost(), rows);
-    }
-
-    /** Converts an expiring-item view into a table row with only relevant batches. */
-    private InventoryRow toInventoryRow(ExpiringItem expiringItem) {
-        InventoryItem item = expiringItem.item();
-        List<BatchRow> rows = expiringItem.batches().stream().map(this::toBatchRow).toList();
-
-        int listedQuantity = rows.stream().mapToInt(BatchRow::quantity).sum();
-        BigDecimal listedCost = rows.stream().map(BatchRow::totalCost)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return new InventoryRow(item.getDisplayName(), item.getSku(),
-                item.getCategory().name().toLowerCase(Locale.ROOT),
-                listedQuantity, listedCost, rows);
     }
 
     /** Converts one domain batch object into detail-table row data. */

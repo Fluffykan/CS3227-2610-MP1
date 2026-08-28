@@ -109,7 +109,9 @@ public final class FxCliHandler {
     private String sell(String arguments) {
         Map<String, String> fields = fields(arguments, List.of("item", "sku", "quantity"));
         if (fields == null || (!fields.containsKey("item") && !fields.containsKey("sku"))
-                || !fields.containsKey("quantity")) return "Usage: sell (--item <name> | --sku <sku>) --quantity <quantity>\n";
+                || !fields.containsKey("quantity")) {
+            return "Usage: sell (--item <name> | --sku <sku>) --quantity <quantity>\n";
+        }
         StringBuilder output = new StringBuilder();
         Integer quantity = integer(fields.get("quantity"), output);
         if (quantity == null || quantity <= 0) return output.toString();
@@ -122,7 +124,9 @@ public final class FxCliHandler {
     private String recall(String arguments) {
         Map<String, String> fields = fields(arguments, List.of("item", "sku", "invoice"));
         if (fields == null || !fields.containsKey("invoice")
-                || (!fields.containsKey("item") && !fields.containsKey("sku"))) return "Usage: recall (--item <name> | --sku <sku>) --invoice <invoice>\n";
+                || (!fields.containsKey("item") && !fields.containsKey("sku"))) {
+            return "Usage: recall (--item <name> | --sku <sku>) --invoice <invoice>\n";
+        }
         RecallBatchResult result = fields.containsKey("item") ? controller.recallBatchByName(fields.get("item"), fields.get("invoice"))
                 : controller.recallBatchBySku(fields.get("sku"), fields.get("invoice"));
         return mutation(result.message(), "Batch recalled.");
@@ -130,7 +134,9 @@ public final class FxCliHandler {
 
     private String remove(String arguments) {
         Map<String, String> fields = fields(arguments, List.of("item", "sku"));
-        if (fields == null || (!fields.containsKey("item") && !fields.containsKey("sku"))) return "Usage: remove (--item <name> | --sku <sku>)\n";
+        if (fields == null || (!fields.containsKey("item") && !fields.containsKey("sku"))) {
+            return "Usage: remove (--item <name> | --sku <sku>)\n";
+        }
         RemoveItemResult result = fields.containsKey("item") ? controller.removeItemByName(fields.get("item"))
                 : controller.removeItemBySku(fields.get("sku"));
         return mutation(result.message(), "Item removed.");
@@ -139,7 +145,9 @@ public final class FxCliHandler {
     private String updateSku(String arguments) {
         Map<String, String> fields = fields(arguments, List.of("item", "current-sku", "sku"));
         if (fields == null || !fields.containsKey("sku")
-                || (!fields.containsKey("item") && !fields.containsKey("current-sku"))) return "Usage: update-sku (--item <name> | --current-sku <old sku>) --sku <new sku>\n";
+                || (!fields.containsKey("item") && !fields.containsKey("current-sku"))) {
+            return "Usage: update-sku (--item <name> | --current-sku <old sku>) --sku <new sku>\n";
+        }
         var result = fields.containsKey("item") ? controller.updateSkuByName(fields.get("item"), fields.get("sku"))
                 : controller.updateSkuByCurrentSku(fields.get("current-sku"), fields.get("sku"));
         return mutation(result.message(), "SKU updated.");
@@ -184,8 +192,25 @@ public final class FxCliHandler {
     private LocalDate date(String text, StringBuilder output) { if (text == null) return null; try {
         return LocalDate.parse(text.trim(), FxFormatter.DATE_FORMAT); }
         catch (RuntimeException exception) { output.append("Expiry must use dd-MM-yyyy.\n"); return null; } }
-    private void appendItems(StringBuilder output, List<InventoryItem> items) { if (items.isEmpty()) { output.append("No matching items.\n"); return; }
-        for (InventoryItem item : items) output.append(item.getDisplayName()).append(" | SKU ").append(item.getSku()).append(" | Qty ").append(item.getTotalQuantity()).append('\n'); }
-    private void appendExpiring(StringBuilder output, List<ExpiringItem> items) { if (items.isEmpty()) { output.append("No matching batches.\n"); return; }
-        for (ExpiringItem item : items) output.append(item.item().getDisplayName()).append(" | batches ").append(item.batches().size()).append('\n'); }
+    private void appendItems(StringBuilder output, List<InventoryItem> items) {
+        if (items.isEmpty()) {
+            output.append("No matching items.\n");
+            return;
+        }
+        for (InventoryItem item : items) {
+            output.append(item.getDisplayName()).append(" | SKU ").append(item.getSku())
+                    .append(" | Qty ").append(item.getTotalQuantity()).append('\n');
+        }
+    }
+
+    private void appendExpiring(StringBuilder output, List<ExpiringItem> items) {
+        if (items.isEmpty()) {
+            output.append("No matching batches.\n");
+            return;
+        }
+        for (ExpiringItem item : items) {
+            output.append(item.item().getDisplayName()).append(" | batches ")
+                    .append(item.batches().size()).append('\n');
+        }
+    }
 }

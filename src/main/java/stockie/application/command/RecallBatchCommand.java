@@ -22,7 +22,9 @@ public final class RecallBatchCommand implements InventoryCommand {
 
     @Override
     public void execute() {
-        if (executed) return;
+        if (executed) {
+            return;
+        }
         if (!initialized) {
             previousItem = inventory.copyItem(itemKey);
             initialized = true;
@@ -33,7 +35,9 @@ public final class RecallBatchCommand implements InventoryCommand {
 
     @Override
     public void undo() {
-        if (!executed) return;
+        if (!executed) {
+            return;
+        }
         inventory.restoreItem(itemKey, previousItem);
         executed = false;
     }

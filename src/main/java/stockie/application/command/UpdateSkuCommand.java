@@ -21,7 +21,9 @@ public final class UpdateSkuCommand implements InventoryCommand {
 
     @Override
     public void execute() {
-        if (executed) return;
+        if (executed) {
+            return;
+        }
         if (!initialized) {
             oldSku = inventory.get(itemKey).getSku();
             initialized = true;
@@ -32,7 +34,9 @@ public final class UpdateSkuCommand implements InventoryCommand {
 
     @Override
     public void undo() {
-        if (!executed) return;
+        if (!executed) {
+            return;
+        }
         inventory.updateSku(itemKey, oldSku);
         executed = false;
     }
