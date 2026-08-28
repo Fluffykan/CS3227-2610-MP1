@@ -43,7 +43,7 @@ test {
 }
 
 application {
-    mainClass = 'stockie.ui.javafx.StockieFxApp'
+    mainClass = 'stockie.ui.javafx.StockieFxLauncher'
 }
 
 jar {
@@ -59,18 +59,6 @@ shadowJar {
 
 run {
     standardInput = System.in
-}
-
-tasks.register('runMockup', JavaExec) {
-    group = 'application'
-    description = 'Runs the JavaFX inventory workbench mockup UI.'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'stockie.ui.javafx.StockieFxApp'
-    // JavaFX artifacts must be provided as modules at runtime.
-    jvmArgs = [
-            '--module-path', classpath.asPath,
-            '--add-modules', 'javafx.controls'
-    ]
 }
 
 tasks.register('runCli', JavaExec) {

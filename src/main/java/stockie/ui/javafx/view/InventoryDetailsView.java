@@ -1,7 +1,5 @@
 package stockie.ui.javafx.view;
 
-import java.math.BigDecimal;
-
 import javafx.beans.property.ReadOnlyIntegerWrapper;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
