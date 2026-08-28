@@ -1,0 +1,210 @@
+package stockie.application.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import stockie.application.exception.ItemNotFoundException;
+import stockie.entities.InventoryItem;
+import stockie.entities.ItemCategory;
+import stockie.entities.NonPerishableBatch;
+import stockie.storage.InventoryRepository;
+
+class InventoryServiceTest {
+    @Test
+    void addBatchNewItemCreatesItemAndIndexesSku() {
+        InventoryService service = new InventoryService();
+
+        service.addBatch("milk", "Milk", " MILK ", ItemCategory.NON_PERISHABLE,
+                batch("INV-1", 3));
+
+        assertNotNull(service.get("milk"));
+        assertEquals(3, service.getBySku(" milk ").getTotalQuantity());
+    }
+
+    @Test
+    void addBatchExistingItemAddsBatchAndUpdatesTotals() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 2));
+
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-2", 4));
+
+        assertEquals(2, service.get("milk").getBatches().size());
+        assertEquals(6, service.get("milk").getTotalQuantity());
+    }
+
+    @Test
+    void addBatchNormalizesInvoiceNumberForStorage() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE,
+                batch(" Inv-1 ", 1));
+
+        assertEquals(" Inv-1 ", service.get("milk").getBatches().get(" inv-1 ").getInvoiceNumber());
+    }
+
+    @Test
+    void sellExactAvailableQuantityRemovesAllStock() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 3));
+
+        assertEquals(3, service.sell("milk", 3).get(0).quantity());
+        assertEquals(0, service.get("milk").getTotalQuantity());
+    }
+
+    @Test
+    void sellPartialQuantityUpdatesRemainingStockAndCost() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE,
+                new NonPerishableBatch("INV-1", 5, BigDecimal.TEN, "UPC"));
+
+        service.sell("milk", 2);
+
+        assertEquals(3, service.get("milk").getTotalQuantity());
+        assertEquals(new BigDecimal("30"), service.get("milk").getTotalCost());
+    }
+
+    @Test
+    void recallBatchExistingBatchRemovesBatchAndUpdatesTotals() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 2));
+
+        service.recallBatch("milk", "inv-1");
+
+        assertEquals(0, service.get("milk").getTotalQuantity());
+        assertNull(service.get("milk").getBatches().get("inv-1"));
+    }
+
+    @Test
+    void updateSkuUpdatesNewIndexAndRemovesOldIndex() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 1));
+
+        service.updateSku("milk", "NEW-MILK");
+
+        assertSameItem(service.get("milk"), service.getBySku("new-milk"));
+        assertNull(service.getBySku("milk"));
+    }
+
+    @Test
+    void copyItemReturnsIndependentCopy() {
+        InventoryService service = new InventoryService();
+        service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 1));
+
+        InventoryItem copy = service.copyItem("milk");
+        copy.sell(1);
+
+        assertEquals(1, service.get("milk").getTotalQuantity());
+    }
+
+    @Test
+    void loadCorruptedEntriesSkipsInvalidEntriesAndReturnsSkippedKeys() throws Exception {
+        HashMap<String, InventoryItem> data = new HashMap<>();
+        data.put("valid", item("Milk", "MILK"));
+        data.put("null-item", null);
+        data.put("missing-category", item("Missing Category", "MISSING", null));
+        InventoryService service = new InventoryService();
+
+        List<String> skipped = service.load(repository(data));
+
+        assertEquals(2, skipped.size());
+        assertEquals(1, service.size());
+        assertNotNull(service.getBySku("milk"));
+    }
+
+    @Test
+    void loadDuplicateNormalizedSkuSkipsDuplicateEntry() throws Exception {
+        HashMap<String, InventoryItem> data = new HashMap<>();
+        data.put("first", item("Milk", "MILK"));
+        data.put("second", item("Bread", "MILK"));
+        InventoryService service = new InventoryService();
+
+        List<String> skipped = service.load(repository(data));
+
+        assertEquals(1, skipped.size());
+        assertEquals(1, service.size());
+    }
+
+    @Test
+    void loadRepositoryThrowsIoExceptionPropagatesException() {
+        InventoryService service = new InventoryService();
+
+        assertThrows(IOException.class, () -> service.load(failingRepository(new IOException())));
+    }
+
+    @Test
+    void loadRepositoryThrowsClassNotFoundExceptionPropagatesException() {
+        InventoryService service = new InventoryService();
+
+        assertThrows(ClassNotFoundException.class,
+                () -> service.load(failingRepository(new ClassNotFoundException())));
+    }
+
+    @Test
+    void sellMissingItemThrowsItemNotFoundException() {
+        assertThrows(ItemNotFoundException.class, () -> new InventoryService().sell("missing", 1));
+    }
+
+    @Test
+    void recallBatchMissingItemThrowsItemNotFoundException() {
+        assertThrows(ItemNotFoundException.class,
+                () -> new InventoryService().recallBatch("missing", "INV-1"));
+    }
+
+    @Test
+    void updateSkuMissingItemThrowsItemNotFoundException() {
+        assertThrows(ItemNotFoundException.class,
+                () -> new InventoryService().updateSku("missing", "SKU"));
+    }
+
+    private static InventoryItem item(String name, String sku) {
+        return new InventoryItem(name, sku, ItemCategory.NON_PERISHABLE);
+    }
+
+    private static InventoryItem item(String name, String sku, ItemCategory category) {
+        return new InventoryItem(name, sku, category);
+    }
+
+    private static NonPerishableBatch batch(String invoice, int quantity) {
+        return new NonPerishableBatch(invoice, quantity, BigDecimal.ONE, "UPC");
+    }
+
+    private static InventoryRepository repository(HashMap<String, InventoryItem> data) {
+        return new InventoryRepository() {
+            @Override
+            public HashMap<String, InventoryItem> load() {
+                return data;
+            }
+
+            @Override
+            public void save(HashMap<String, InventoryItem> snapshot) { }
+        };
+    }
+
+    private static InventoryRepository failingRepository(Exception exception) {
+        return new InventoryRepository() {
+            @Override
+            public HashMap<String, InventoryItem> load() throws IOException, ClassNotFoundException {
+                if (exception instanceof IOException) {
+                    throw (IOException) exception;
+                }
+                throw (ClassNotFoundException) exception;
+            }
+
+            @Override
+            public void save(HashMap<String, InventoryItem> snapshot) { }
+        };
+    }
+
+    private static void assertSameItem(InventoryItem expected, InventoryItem actual) {
+        assertEquals(expected.getDisplayName(), actual.getDisplayName());
+        assertEquals(expected.getSku(), actual.getSku());
+    }
+}
