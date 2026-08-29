@@ -1,6 +1,7 @@
 package stockie.application.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 
@@ -35,6 +36,31 @@ class RecallBatchCommandTest {
         assertEquals(0, inventory.get("milk").getTotalQuantity());
         assertEquals("Milk", command.getItemName());
         assertEquals("MILK", command.getSku());
+    }
+
+    @Test
+    void gettersBeforeExecutionReadCurrentItemMetadata() {
+        InventoryService inventory = inventoryWithItem();
+        RecallBatchCommand command = new RecallBatchCommand(inventory, "milk", "inv-1");
+
+        assertEquals("milk", command.getItemKey());
+        assertEquals("Milk", command.getItemName());
+        assertEquals("MILK", command.getSku());
+        assertEquals(ItemCategory.NON_PERISHABLE, command.getCategory());
+        assertEquals("INV-1", command.getAffectedBatch().getInvoiceNumber());
+        assertEquals("added", command.getUndoAction());
+        assertEquals("recalled", command.getRedoAction());
+    }
+
+    @Test
+    void failedExecutionLeavesBatchUnchanged() {
+        InventoryService inventory = inventoryWithItem();
+        RecallBatchCommand command = new RecallBatchCommand(inventory, "milk", "missing-invoice");
+
+        assertThrows(IllegalArgumentException.class, command::execute);
+
+        assertEquals(3, inventory.get("milk").getTotalQuantity());
+        assertEquals(1, inventory.get("milk").getBatches().size());
     }
 
     private static InventoryService inventoryWithItem() {

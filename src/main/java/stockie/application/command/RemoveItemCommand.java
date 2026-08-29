@@ -51,17 +51,25 @@ public final class RemoveItemCommand implements InventoryCommand {
     public String getItemKey() { return itemKey; }
 
     @Override
-    public String getItemName() { return previousItem.getDisplayName(); }
+    public String getItemName() { return metadataItem().getDisplayName(); }
 
     @Override
-    public String getSku() { return previousItem.getSku(); }
+    public String getSku() { return metadataItem().getSku(); }
 
     @Override
-    public ItemCategory getCategory() { return previousItem.getCategory(); }
+    public ItemCategory getCategory() { return metadataItem().getCategory(); }
 
     @Override
     public Batch getAffectedBatch() { return null; }
 
     @Override
-    public InventoryItem getAffectedItem() { return previousItem.deepCopy(); }
+    public InventoryItem getAffectedItem() { return metadataItem().deepCopy(); }
+
+    private InventoryItem metadataItem() {
+        InventoryItem item = previousItem == null ? inventory.get(itemKey) : previousItem;
+        if (item == null) {
+            throw new IllegalStateException("Command item is unavailable");
+        }
+        return item;
+    }
 }

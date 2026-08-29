@@ -51,12 +51,20 @@ public final class SellItemCommand implements InventoryCommand {
     public String getUndoAction() { return "restored sale for"; }
     public String getRedoAction() { return "sold"; }
     public String getItemKey() { return itemKey; }
-    public String getItemName() { return previousItem.getDisplayName(); }
-    public String getSku() { return previousItem.getSku(); }
-    public ItemCategory getCategory() { return previousItem.getCategory(); }
+    public String getItemName() { return metadataItem().getDisplayName(); }
+    public String getSku() { return metadataItem().getSku(); }
+    public ItemCategory getCategory() { return metadataItem().getCategory(); }
     public Batch getAffectedBatch() { return null; }
 
     /** Returns the item's current state so history output reflects the completed operation. */
     @Override
-    public InventoryItem getAffectedItem() { return inventory.copyItem(itemKey); }
+    public InventoryItem getAffectedItem() { return metadataItem().deepCopy(); }
+
+    private InventoryItem metadataItem() {
+        InventoryItem item = inventory.get(itemKey);
+        if (item == null) {
+            throw new IllegalStateException("Command item is unavailable");
+        }
+        return item;
+    }
 }

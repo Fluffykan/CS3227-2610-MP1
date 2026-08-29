@@ -38,6 +38,21 @@ class RemoveItemCommandTest {
         assertEquals("MILK", command.getSku());
     }
 
+    @Test
+    void gettersBeforeExecutionReadCurrentItemMetadata() {
+        InventoryService inventory = inventoryWithItem();
+        RemoveItemCommand command = new RemoveItemCommand(inventory, "milk");
+
+        assertEquals("milk", command.getItemKey());
+        assertEquals("Milk", command.getItemName());
+        assertEquals("MILK", command.getSku());
+        assertEquals(ItemCategory.NON_PERISHABLE, command.getCategory());
+        assertNull(command.getAffectedBatch());
+        assertEquals("restored", command.getUndoAction());
+        assertEquals("removed", command.getRedoAction());
+        assertEquals(3, command.getAffectedItem().getTotalQuantity());
+    }
+
     private static InventoryService inventoryWithItem() {
         InventoryService inventory = new InventoryService();
         inventory.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE,

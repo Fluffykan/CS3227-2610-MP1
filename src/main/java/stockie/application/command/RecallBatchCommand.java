@@ -46,8 +46,16 @@ public final class RecallBatchCommand implements InventoryCommand {
     public String getUndoAction() { return "added"; }
     public String getRedoAction() { return "recalled"; }
     public String getItemKey() { return itemKey; }
-    public String getItemName() { return previousItem.getDisplayName(); }
-    public String getSku() { return previousItem.getSku(); }
-    public ItemCategory getCategory() { return previousItem.getCategory(); }
-    public Batch getAffectedBatch() { return previousItem.getBatches().get(invoiceKey); }
+    public String getItemName() { return metadataItem().getDisplayName(); }
+    public String getSku() { return metadataItem().getSku(); }
+    public ItemCategory getCategory() { return metadataItem().getCategory(); }
+    public Batch getAffectedBatch() { return metadataItem().getBatches().get(invoiceKey); }
+
+    private InventoryItem metadataItem() {
+        InventoryItem item = previousItem == null ? inventory.get(itemKey) : previousItem;
+        if (item == null) {
+            throw new IllegalStateException("Command item is unavailable");
+        }
+        return item;
+    }
 }

@@ -1,6 +1,8 @@
 package stockie.application.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 
@@ -24,6 +26,33 @@ class SellItemCommandTest {
         command.execute();
 
         assertEquals(1, inventory.get("milk").getTotalQuantity());
+    }
+
+    @Test
+    void gettersBeforeExecutionReadCurrentItemMetadata() {
+        InventoryService inventory = inventoryWithItem();
+        SellItemCommand command = new SellItemCommand(inventory, "milk", 2);
+
+        assertEquals("milk", command.getItemKey());
+        assertEquals("Milk", command.getItemName());
+        assertEquals("MILK", command.getSku());
+        assertEquals(ItemCategory.NON_PERISHABLE, command.getCategory());
+        assertNull(command.getAffectedBatch());
+        assertNull(command.getSoldBatches());
+        assertEquals("restored sale for", command.getUndoAction());
+        assertEquals("sold", command.getRedoAction());
+        assertEquals(3, command.getAffectedItem().getTotalQuantity());
+    }
+
+    @Test
+    void failedExecutionDoesNotPartiallySellStock() {
+        InventoryService inventory = inventoryWithItem();
+        SellItemCommand command = new SellItemCommand(inventory, "milk", 4);
+
+        assertThrows(IllegalArgumentException.class, command::execute);
+
+        assertEquals(3, inventory.get("milk").getTotalQuantity());
+        assertEquals(3, inventory.get("milk").getBatches().get("inv-1").getQuantity());
     }
 
     @Test
