@@ -3,11 +3,13 @@ package stockie.application.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,7 @@ import stockie.application.service.InventoryService;
 import stockie.entities.InventoryItem;
 import stockie.entities.ItemCategory;
 import stockie.entities.NonPerishableBatch;
+import stockie.entities.PerishableBatch;
 import stockie.storage.InventoryRepository;
 
 class StockieControllerTest {
@@ -90,6 +93,106 @@ class StockieControllerTest {
 
         assertNull(result.item());
         assertEquals(" item category does not match existing item: Milk", result.message());
+    }
+
+    @Test
+    void addBatchWithLeapDayExpiryCreatesPerishableItem() {
+        LocalDate leapDay = LocalDate.of(2028, 2, 29);
+
+        AddBatchResult result = controller.addBatch(perishableRequest(
+                "Milk", "MILK", "INV-1", 3, leapDay));
+
+        assertNotNull(result.item());
+        assertNull(result.message());
+        assertEquals(ItemCategory.PERISHABLE, result.item().getCategory());
+        assertEquals(leapDay, ((PerishableBatch) result.item().getBatches()
+                .get("inv-1")).getExpiryDate());
+    }
+
+    @Test
+    void addBatchWithZeroQuantityReturnsValidationError() {
+        AddBatchResult result = controller.addBatch(request("Milk", "MILK", "INV-1", 0));
+
+        assertNull(result.item());
+        assertEquals(" quantity must be positive", result.message());
+        assertEquals(0, inventory.size());
+    }
+
+    @Test
+    void addBatchWithNegativeQuantityReturnsValidationError() {
+        AddBatchResult result = controller.addBatch(request("Bread", "BREAD", "INV-2", -1));
+
+        assertNull(result.item());
+        assertEquals(" quantity must be positive", result.message());
+        assertEquals(0, inventory.size());
+    }
+
+    @Test
+    void addBatchWithNegativePriceReturnsValidationError() {
+        AddBatchResult result = controller.addBatch(new AddBatchRequest(
+                "Milk", "MILK", "INV-1", 1, new BigDecimal("-1.00"), null, "123"));
+
+        assertNull(result.item());
+        assertEquals(" unit price must be non-negative", result.message());
+        assertEquals(0, inventory.size());
+    }
+
+    @Test
+    void addBatchWithExpiredPerishableBatchIsAcceptedByController() {
+        LocalDate expiredDate = LocalDate.now().minusDays(1);
+
+        AddBatchResult result = controller.addBatch(perishableRequest(
+                "Milk", "MILK", "INV-1", 3, expiredDate));
+
+        assertNotNull(result.item());
+        assertNull(result.message());
+        assertEquals(expiredDate, ((PerishableBatch) result.item().getBatches()
+                .get("inv-1")).getExpiryDate());
+    }
+
+    @Test
+    void addBatchWithNullRequestReturnsValidationError() {
+        AddBatchResult result = controller.addBatch(null);
+
+        assertNull(result.item());
+        assertEquals(" invalid add request", result.message());
+        assertEquals(0, inventory.size());
+    }
+
+    @Test
+    void addBatchWithIncompleteRequestReturnsValidationError() {
+        AddBatchResult result = controller.addBatch(new AddBatchRequest(
+                "", "MILK", "INV-1", 1, BigDecimal.ONE, null, "123"));
+
+        assertNull(result.item());
+        assertEquals(" invalid add request", result.message());
+        assertEquals(0, inventory.size());
+    }
+
+    @Test
+    void loadForwardsValidDataFromRepository() throws IOException, ClassNotFoundException {
+        repository.savedSnapshot = inventoryWithItem().snapshot();
+
+        List<String> skippedItems = controller.load();
+
+        assertEquals(List.of(), skippedItems);
+        assertEquals(3, inventory.get("milk").getTotalQuantity());
+        assertNotNull(inventory.getBySku("MILK"));
+    }
+
+    @Test
+    void loadPropagatesRepositoryIoException() {
+        StockieController failingController = controllerWithLoadFailure(new IOException("load failed"));
+
+        assertThrows(IOException.class, failingController::load);
+    }
+
+    @Test
+    void loadPropagatesRepositoryClassNotFoundException() {
+        StockieController failingController = controllerWithLoadFailure(
+                new ClassNotFoundException("load failed"));
+
+        assertThrows(ClassNotFoundException.class, failingController::load);
     }
 
     @Test
@@ -173,10 +276,12 @@ class StockieControllerTest {
         controller.addBatch(request("Milk", "MILK", "INV-1", 3));
         controller.addBatch(request("Bread", "BREAD", "INV-2", 2));
 
-        UpdateSkuResult result = controller.updateSkuByName("Milk", "BREAD");
+        UpdateSkuResult result = controller.updateSkuByName("Milk", "bread");
 
         assertNull(result.item());
-        assertEquals(" sku already exists: BREAD", result.message());
+        assertEquals(" sku already exists: bread", result.message());
+        assertEquals("MILK", inventory.get("milk").getSku());
+        assertNotNull(controller.findBySku("BREAD").item());
     }
 
     @Test
@@ -349,6 +454,25 @@ class StockieControllerTest {
             }
         };
         return new StockieController(inventory, new CommandManager(inventory, repository), repository);
+    }
+
+    private static StockieController controllerWithLoadFailure(Exception exception) {
+        InventoryService failingInventory = new InventoryService();
+        InventoryRepository repository = new InventoryRepository() {
+            @Override
+            public HashMap<String, InventoryItem> load() throws IOException, ClassNotFoundException {
+                if (exception instanceof IOException) {
+                    throw (IOException) exception;
+                }
+                throw (ClassNotFoundException) exception;
+            }
+
+            @Override
+            public void save(HashMap<String, InventoryItem> snapshot) {
+            }
+        };
+        return new StockieController(failingInventory,
+                new CommandManager(failingInventory, repository), repository);
     }
 
     private static final class InMemoryRepository implements InventoryRepository {

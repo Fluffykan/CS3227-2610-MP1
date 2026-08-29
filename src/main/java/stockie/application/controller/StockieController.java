@@ -29,12 +29,12 @@ import stockie.entities.InventoryItem;
 import stockie.entities.ItemCategory;
 import stockie.entities.NonPerishableBatch;
 import stockie.entities.PerishableBatch;
+import stockie.policy.InventoryPolicy;
 import stockie.storage.InventoryRepository;
 import stockie.util.TextNormalizer;
 
 /** Provides UI-independent inventory operations for console and JavaFX clients. */
 public final class StockieController {
-    private static final int MAX_ITEMS = 200_000;
     private final InventoryService inventory;
     private final InventoryQueryService queries;
     private final CommandManager commandManager;
@@ -54,13 +54,23 @@ public final class StockieController {
 
     /** Adds a batch after enforcing inventory-wide uniqueness and consistency rules. */
     public AddBatchResult addBatch(AddBatchRequest request) {
+        if (request == null || isBlank(request.itemName()) || isBlank(request.sku())
+                || isBlank(request.invoiceNumber()) || request.unitPrice() == null) {
+            return new AddBatchResult(null, " invalid add request");
+        }
+        if (request.quantity() <= 0) {
+            return new AddBatchResult(null, " quantity must be positive");
+        }
+        if (request.unitPrice().signum() < 0) {
+            return new AddBatchResult(null, " unit price must be non-negative");
+        }
         ItemCategory category = request.expiryDate() == null
                 ? ItemCategory.NON_PERISHABLE : ItemCategory.PERISHABLE;
         String itemKey = TextNormalizer.normalize(request.itemName());
         String invoiceKey = TextNormalizer.normalize(request.invoiceNumber());
         InventoryItem item = inventory.get(itemKey);
-        if (item == null && inventory.size() >= MAX_ITEMS) {
-            return new AddBatchResult(null, " cannot track more than " + MAX_ITEMS + " items");
+        if (item == null && inventory.size() >= InventoryPolicy.MAX_ITEMS) {
+            return new AddBatchResult(null, " cannot track more than " + InventoryPolicy.MAX_ITEMS + " items");
         }
         if (item != null && item.getCategory() != category) {
             return new AddBatchResult(null, " item category does not match existing item: "
@@ -88,6 +98,10 @@ public final class StockieController {
         } catch (IOException exception) {
             return new AddBatchResult(null, " unable to save inventory; addition cancelled");
         }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     /** Recalls a batch identified by its item name and invoice number. */
