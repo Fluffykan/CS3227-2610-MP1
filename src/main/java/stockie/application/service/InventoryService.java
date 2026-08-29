@@ -33,8 +33,9 @@ public final class InventoryService {
         }
         for (Map.Entry<String, InventoryItem> entry : loadedItems.entrySet()) {
             try {
-                InventoryItem item = entry.getValue().deepCopy();
+                InventoryItem item = entry.getValue();
                 validateLoadedItem(entry.getKey(), item);
+                item = item.deepCopy();
                 String normalizedSku = TextNormalizer.normalize(item.getSku());
                 if (validSkuIndex.containsKey(normalizedSku)) {
                     skippedItems.add(entry.getKey());
@@ -42,7 +43,7 @@ public final class InventoryService {
                 }
                 validItems.put(entry.getKey(), item);
                 validSkuIndex.put(normalizedSku, item);
-            } catch (RuntimeException exception) {
+            } catch (IllegalArgumentException exception) {
                 skippedItems.add(entry.getKey());
             }
         }
@@ -147,14 +148,6 @@ public final class InventoryService {
             copy.put(entry.getKey(), entry.getValue().deepCopy());
         }
         return copy;
-    }
-
-    /** Rebuilds the transient SKU index after loading persisted inventory data. */
-    private void rebuildSkuIndex() {
-        itemsBySku.clear();
-        for (InventoryItem item : items.values()) {
-            itemsBySku.put(TextNormalizer.normalize(item.getSku()), item);
-        }
     }
 
     private static void validateLoadedItem(String itemKey, InventoryItem item) {
