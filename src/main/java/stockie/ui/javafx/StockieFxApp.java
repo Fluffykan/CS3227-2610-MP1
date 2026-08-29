@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -205,8 +206,13 @@ public final class StockieFxApp extends Application {
 
         Button expiringCustom = buildFilterButton("Apply", () -> {
             String text = expiringDaysField.getText().trim();
+            List<String> errors = new ArrayList<>();
             Integer days = parseIntConditional(text, value -> value > 0,
-                    "Days must be a positive whole number less than " + Integer.MAX_VALUE + ".");
+                    "Days must be a positive whole number less than " + Integer.MAX_VALUE + ".", errors);
+            if (!errors.isEmpty()) {
+                showWarning(String.join("\n", errors));
+                return;
+            }
             if (days == null) {
                 return;
             }
@@ -428,15 +434,25 @@ public final class StockieFxApp extends Application {
         String itemName = itemField.getText().trim();
         String sku = skuField.getText().trim();
         String invoice = invoiceField.getText().trim();
+        List<String> errors = new ArrayList<>();
         Integer quantity = parseIntConditional(quantityField.getText(), value -> value > 0,
-                "Quantity must be a positive whole number.");
+                "Quantity must be a positive whole number.", errors);
         BigDecimal unitPrice = parseNonNegativeDecimal(priceField.getText(),
-                "Unit price must be a non-negative number.");
+                "Unit price must be a non-negative number.", errors);
         LocalDate expiry = expiryPicker.getValue();
         String upc = upcField.getText().trim().isEmpty() ? null : upcField.getText().trim();
 
-        if (itemName.isEmpty() || sku.isEmpty() || invoice.isEmpty() || quantity == null || unitPrice == null) {
-            showWarning("Item, SKU, invoice, quantity, and unit price are required.");
+        if (itemName.isEmpty()) {
+            errors.add("Item is required.");
+        }
+        if (sku.isEmpty()) {
+            errors.add("SKU is required.");
+        }
+        if (invoice.isEmpty()) {
+            errors.add("Invoice is required.");
+        }
+        if (!errors.isEmpty()) {
+            showWarning(String.join("\n", errors));
             return;
         }
 
@@ -608,19 +624,28 @@ public final class StockieFxApp extends Application {
 
         String identifier = identifierField.getText().trim();
         String extraValue = extraFieldLabel == null ? "" : extraField.getText().trim();
+        List<String> errors = new ArrayList<>();
         if (identifier.isEmpty() || (extraFieldLabel != null && extraValue.isEmpty())) {
-            showWarning("Required fields cannot be empty.");
-            return null;
+            if (identifier.isEmpty()) {
+                errors.add("Identifier is required.");
+            }
+            if (extraFieldLabel != null && extraValue.isEmpty()) {
+                errors.add(extraFieldLabel + " is required.");
+            }
         }
 
         int quantity = 0;
-        if (numericExtra) {
+        if (numericExtra && !extraValue.isEmpty()) {
             Integer parsed = parseIntConditional(extraValue, value -> value > 0,
-                    "Quantity must be a positive whole number.");
-            if (parsed == null) {
-                return null;
+                    "Quantity must be a positive whole number.", errors);
+            if (parsed != null) {
+                quantity = parsed;
             }
-            quantity = parsed;
+        }
+
+        if (!errors.isEmpty()) {
+            showWarning(String.join("\n", errors));
+            return null;
         }
 
         return new IdentifierInput(identifier, byItem.isSelected(), quantity, extraValue);
@@ -646,7 +671,8 @@ public final class StockieFxApp extends Application {
     }
 
     /** Parses and validates positive integers used by quantity inputs. */
-    private Integer parseIntConditional(String text, Predicate<Integer> validator, String message) {
+    private Integer parseIntConditional(String text, Predicate<Integer> validator,
+            String message, List<String> errors) {
         try {
             int value = Integer.parseInt(text.trim());
             if (validator.test(value)) {
@@ -655,12 +681,12 @@ public final class StockieFxApp extends Application {
         } catch (NumberFormatException ignored) {
             // Validation feedback is returned below.
         }
-        showWarning(message);
+        errors.add(message);
         return null;
     }
 
     /** Parses and validates non-negative decimal values used by unit price inputs. */
-    private BigDecimal parseNonNegativeDecimal(String text, String message) {
+    private BigDecimal parseNonNegativeDecimal(String text, String message, List<String> errors) {
         try {
             BigDecimal value = new BigDecimal(text.trim());
             if (value.signum() >= 0) {
@@ -669,7 +695,7 @@ public final class StockieFxApp extends Application {
         } catch (NumberFormatException ignored) {
             // Validation feedback is returned below.
         }
-        showWarning(message);
+        errors.add(message);
         return null;
     }
 

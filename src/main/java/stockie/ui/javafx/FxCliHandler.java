@@ -74,7 +74,7 @@ public final class FxCliHandler {
         } else if (option.equals("expired")) {
             appendExpiring(output, controller.listExpiredBatches().items());
         } else if (option.startsWith("expiring-in ")) {
-            Integer days = integer(option.substring("expiring-in ".length()), output);
+            Integer days = integer(option.substring("expiring-in ".length()), output, "days");
             if (days != null && days >= 0) {
                 appendExpiring(output, controller.listExpiringBatches(days).items());
             }
@@ -110,7 +110,7 @@ public final class FxCliHandler {
                     + "--price <price> [--expiry <dd-MM-yyyy>] [--upc <upc>]\n";
         }
         StringBuilder output = new StringBuilder();
-        Integer quantity = integer(fields.get("quantity"), output);
+        Integer quantity = integer(fields.get("quantity"), output, "quantity");
         BigDecimal price = decimal(fields.get("price"), output);
         LocalDate expiry = date(fields.get("expiry"), output);
         if (quantity == null || quantity <= 0 || price == null || price.signum() < 0
@@ -133,7 +133,7 @@ public final class FxCliHandler {
             return "Usage: sell (--item <name> | --sku <sku>) --quantity <quantity>\n";
         }
         StringBuilder output = new StringBuilder();
-        Integer quantity = integer(fields.get("quantity"), output);
+        Integer quantity = integer(fields.get("quantity"), output, "quantity");
         if (quantity == null || quantity <= 0) {
             return output.toString();
         }
@@ -224,11 +224,11 @@ public final class FxCliHandler {
         return !value.trim().isEmpty() && values.putIfAbsent(key, value.trim()) == null;
     }
 
-    private Integer integer(String text, StringBuilder output) {
+    private Integer integer(String text, StringBuilder output, String fieldDescription) {
         try {
             return Integer.parseInt(text.trim());
         } catch (NumberFormatException exception) {
-            output.append("Expected a whole number.\n");
+            output.append("Expected a whole number for ").append(fieldDescription).append(".\n");
             return null;
         }
     }
