@@ -1,5 +1,6 @@
 package stockie.ui.javafx;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -50,6 +51,7 @@ import stockie.entities.InventoryItem;
 import stockie.entities.PerishableBatch;
 import stockie.storage.FileInventoryRepository;
 import stockie.storage.InventoryRepository;
+import stockie.ui.javafx.command.FxCommandResult;
 import stockie.ui.javafx.util.BatchRow;
 import stockie.ui.javafx.util.DashboardMetrics;
 import stockie.ui.javafx.util.FxFormatter;
@@ -90,16 +92,14 @@ public final class StockieFxApp extends Application {
         this.controller = createController();
         this.presenter = new StockieFxPresenter(controller, this::replaceInventoryRows,
             this::applyDashboardMetrics, this::showStatus, this::clearDetails);
-        this.cliHandler = new FxCliHandler(controller, this::replaceInventoryRows,
-            this::bindDetailPanel, this::refreshCurrentView,
-            stage::close, this::toInventoryRow);
+        this.cliHandler = new FxCliHandler(controller, stage::close, this::toInventoryRow);
         try {
             List<String> skippedItems = controller.load();
             if (!skippedItems.isEmpty()) {
                 showWarning("Skipped " + skippedItems.size() + " corrupted inventory entr"
                         + (skippedItems.size() == 1 ? "y" : "ies") + ".");
             }
-        } catch (Exception exception) {
+        } catch (IOException | ClassNotFoundException exception) {
             showWarning("Unable to load saved inventory. Starting with an empty inventory.");
         }
 
@@ -319,7 +319,15 @@ public final class StockieFxApp extends Application {
             String command = cliInput.getText().trim();
             if (!command.isEmpty()) {
                 cliOutput.appendText("> " + command + "\n");
-                cliOutput.appendText(cliHandler.execute(command));
+                FxCommandResult result = cliHandler.execute(command);
+                cliOutput.appendText(result.message());
+                if (result.refreshRequired()) {
+                    refreshCurrentView();
+                }
+                if (result.selectedRow() != null) {
+                    replaceInventoryRows(List.of(result.selectedRow()));
+                    bindDetailPanel(result.selectedRow());
+                }
                 cliInput.clear();
             }
         });
@@ -381,8 +389,8 @@ public final class StockieFxApp extends Application {
 
     /** Handles undo/redo response and refreshes the current list filter. */
     private void applyHistoryResult(CommandResult result, boolean undo) {
-        if (result.message() != null) {
-            showWarning(result.message());
+        if (result.errorMessage() != null) {
+            showWarning(result.errorMessage());
             return;
         }
         refreshCurrentView();
