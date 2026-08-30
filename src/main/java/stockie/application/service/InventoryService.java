@@ -63,9 +63,7 @@ public final class InventoryService {
     /** Adds a batch while maintaining item category and SKU invariants. */
     public void addBatch(String itemKey, String itemName, String sku,
             ItemCategory category, Batch batch) {
-        if (batch.getQuantity() <= 0) {
-            throw new IllegalArgumentException("Batch quantity must be positive");
-        }
+        validateBatchForAddition(batch);
         InventoryItem item = items.get(itemKey);
         if (item == null) {
             item = new InventoryItem(itemName, sku, category);
@@ -161,6 +159,31 @@ public final class InventoryService {
                 || item.getDisplayName().isEmpty() || item.getSku() == null || item.getSku().isEmpty()
                 || item.getCategory() == null) {
             throw new IllegalArgumentException("Invalid inventory item");
+        }
+        if (item.getBatches() == null) {
+            throw new IllegalArgumentException("Invalid inventory batches");
+        }
+        for (Map.Entry<String, Batch> batchEntry : item.getBatches().entrySet()) {
+            Batch batch = batchEntry.getValue();
+            if (batchEntry.getKey() == null || batch == null || batch.getInvoiceNumber() == null
+                    || batch.getInvoiceNumber().isEmpty()
+                    || !TextNormalizer.normalize(batch.getInvoiceNumber()).equals(batchEntry.getKey())
+                    || batch.getQuantity() <= 0 || batch.getUnitPrice() == null
+                    || item.getCategory() == ItemCategory.PERISHABLE != (batch instanceof PerishableBatch)) {
+                throw new IllegalArgumentException("Invalid inventory batch");
+            }
+        }
+    }
+
+    private static void validateBatchForAddition(Batch batch) {
+        if (batch == null || batch.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Batch quantity must be positive");
+        }
+        if (batch.getInvoiceNumber() == null || batch.getInvoiceNumber().isEmpty()) {
+            throw new IllegalArgumentException("Batch invoice must not be empty");
+        }
+        if (batch.getUnitPrice() == null) {
+            throw new IllegalArgumentException("Batch price must not be null");
         }
     }
 }

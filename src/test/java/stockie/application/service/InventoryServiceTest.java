@@ -55,6 +55,42 @@ class InventoryServiceTest {
     }
 
     @Test
+    void addBatchWithNullBatchRejectsWithoutCreatingIndexes() {
+        InventoryService service = new InventoryService();
+
+        assertThrows(IllegalArgumentException.class, () -> service.addBatch("milk", "Milk", "MILK",
+                ItemCategory.NON_PERISHABLE, null));
+
+        assertEquals(0, service.size());
+        assertNull(service.get("milk"));
+        assertNull(service.getBySku("milk"));
+    }
+
+    @Test
+    void addBatchWithNullInvoiceRejectsWithoutCreatingIndexes() {
+        InventoryService service = new InventoryService();
+
+        assertThrows(IllegalArgumentException.class, () -> service.addBatch("milk", "Milk", "MILK",
+                ItemCategory.NON_PERISHABLE, new NonPerishableBatch(null, 1, BigDecimal.ONE, "UPC")));
+
+        assertEquals(0, service.size());
+        assertNull(service.get("milk"));
+        assertNull(service.getBySku("milk"));
+    }
+
+    @Test
+    void addBatchWithNullPriceRejectsWithoutCreatingIndexes() {
+        InventoryService service = new InventoryService();
+
+        assertThrows(IllegalArgumentException.class, () -> service.addBatch("milk", "Milk", "MILK",
+                ItemCategory.NON_PERISHABLE, new NonPerishableBatch("INV-1", 1, null, "UPC")));
+
+        assertEquals(0, service.size());
+        assertNull(service.get("milk"));
+        assertNull(service.getBySku("milk"));
+    }
+
+    @Test
     void addBatchExistingItemAddsBatchAndUpdatesTotals() {
         InventoryService service = new InventoryService();
         service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 2));
@@ -179,6 +215,29 @@ class InventoryServiceTest {
         List<String> skipped = service.load(repository(data));
 
         assertEquals(2, skipped.size());
+        assertEquals(1, service.size());
+        assertNotNull(service.getBySku("milk"));
+    }
+
+    @Test
+    void loadInvalidNestedBatchesSkipsTheirItems() throws Exception {
+        InventoryItem nullBatchItem = item("Null Batch", "NULL-BATCH");
+        nullBatchItem.getBatches().put("inv-1", null);
+        InventoryItem invalidQuantityItem = item("Invalid Quantity", "INVALID-QUANTITY");
+        invalidQuantityItem.getBatches().put("inv-1", new NonPerishableBatch("INV-1", 0, BigDecimal.ONE, null));
+        InventoryItem invalidPriceItem = item("Invalid Price", "INVALID-PRICE");
+        invalidPriceItem.getBatches().put("inv-1", new NonPerishableBatch("INV-1", 1, null, null));
+        HashMap<String, InventoryItem> data = new HashMap<>();
+        data.put("valid", item("Milk", "MILK"));
+        data.put("null-batch", nullBatchItem);
+        data.put("invalid-quantity", invalidQuantityItem);
+        data.put("invalid-price", invalidPriceItem);
+
+        InventoryService service = new InventoryService();
+
+        List<String> skipped = service.load(repository(data));
+
+        assertEquals(List.of("invalid-price", "invalid-quantity", "null-batch"), skipped.stream().sorted().toList());
         assertEquals(1, service.size());
         assertNotNull(service.getBySku("milk"));
     }
