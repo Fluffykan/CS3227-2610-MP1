@@ -170,6 +170,23 @@ class CommandManagerTest {
     }
 
     @Test
+    void failedCommandPreservesExistingRedoHistory() throws IOException {
+        InventoryService inventory = new InventoryService();
+        CommandManager manager = new CommandManager(inventory, new RecordingRepository());
+        AddBatchCommand addCommand = new AddBatchCommand(inventory, "Milk", "milk", "MILK",
+                ItemCategory.NON_PERISHABLE, new NonPerishableBatch("INV-1", 2, BigDecimal.TEN, "123"));
+        RecallBatchCommand failedCommand = new RecallBatchCommand(inventory, "milk", "missing-invoice");
+
+        manager.execute(addCommand);
+        manager.undo();
+
+        assertThrows(ItemNotFoundException.class, () -> manager.execute(failedCommand));
+        manager.redo();
+
+        assertEquals(2, inventory.get("milk").getTotalQuantity());
+    }
+
+    @Test
     void mixedCommandSequenceCanBeUndoneAndRedoneInOrder() throws IOException {
         InventoryService inventory = new InventoryService();
         CommandManager manager = new CommandManager(inventory, new RecordingRepository());

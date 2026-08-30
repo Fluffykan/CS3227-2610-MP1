@@ -1,6 +1,7 @@
 package stockie.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,6 +17,25 @@ import stockie.entities.PerishableBatch;
 
 class InventoryQueryServiceTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 9, 15);
+
+    @Test
+    void findByNameAndFindBySkuAreCaseInsensitive() {
+        InventoryService inventory = new InventoryService();
+        inventory.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE,
+                new NonPerishableBatch("INV-1", 1, BigDecimal.ONE, "1"));
+        InventoryQueryService queries = new InventoryQueryService(inventory);
+
+        assertEquals("Milk", queries.findByName("MILK").getDisplayName());
+        assertEquals("Milk", queries.findBySku("milk").getDisplayName());
+    }
+
+    @Test
+    void findByNameAndFindBySkuReturnNullForMissingValues() {
+        InventoryQueryService queries = new InventoryQueryService(new InventoryService());
+
+        assertNull(queries.findByName("missing"));
+        assertNull(queries.findBySku("missing"));
+    }
 
     @Test
     void listDepletedOnlyReturnsOnlyItemsWithNoRemainingStock() {
