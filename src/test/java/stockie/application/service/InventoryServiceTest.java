@@ -31,6 +31,30 @@ class InventoryServiceTest {
     }
 
     @Test
+    void addBatchNewItemWithZeroQuantityRejectsBatchWithoutCreatingIndexes() {
+        InventoryService service = new InventoryService();
+
+        assertThrows(IllegalArgumentException.class, () -> service.addBatch("milk", "Milk", "MILK",
+                ItemCategory.NON_PERISHABLE, batch("INV-1", 0)));
+
+        assertEquals(0, service.size());
+        assertNull(service.get("milk"));
+        assertNull(service.getBySku("milk"));
+    }
+
+    @Test
+    void addBatchNewItemWithNegativeQuantityRejectsBatchWithoutCreatingIndexes() {
+        InventoryService service = new InventoryService();
+
+        assertThrows(IllegalArgumentException.class, () -> service.addBatch("milk", "Milk", "MILK",
+                ItemCategory.NON_PERISHABLE, batch("INV-1", -1)));
+
+        assertEquals(0, service.size());
+        assertNull(service.get("milk"));
+        assertNull(service.getBySku("milk"));
+    }
+
+    @Test
     void addBatchExistingItemAddsBatchAndUpdatesTotals() {
         InventoryService service = new InventoryService();
         service.addBatch("milk", "Milk", "MILK", ItemCategory.NON_PERISHABLE, batch("INV-1", 2));

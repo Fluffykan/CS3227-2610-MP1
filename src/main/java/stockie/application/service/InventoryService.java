@@ -60,6 +60,9 @@ public final class InventoryService {
     /** Adds a batch while maintaining item category and SKU invariants. */
     public void addBatch(String itemKey, String itemName, String sku,
             ItemCategory category, Batch batch) {
+        if (batch.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Batch quantity must be positive");
+        }
         InventoryItem item = items.get(itemKey);
         if (item == null) {
             item = new InventoryItem(itemName, sku, category);
