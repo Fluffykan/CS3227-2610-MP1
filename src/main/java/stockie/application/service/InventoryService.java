@@ -53,7 +53,10 @@ public final class InventoryService {
     }
 
     public InventoryItem get(String itemKey) { return items.get(itemKey); }
-    public InventoryItem getBySku(String skuKey) { return itemsBySku.get(skuKey); }
+    /** Returns the item identified by a case-insensitive SKU, or {@code null} if absent. */
+    public InventoryItem getBySku(String skuKey) {
+        return itemsBySku.get(TextNormalizer.normalize(skuKey));
+    }
     public java.util.Collection<InventoryItem> values() { return items.values(); }
     public int size() { return items.size(); }
 
