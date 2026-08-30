@@ -43,7 +43,7 @@ class InventoryPolicyTest {
                 "New item", "NEW-SKU", "INV-1", 1, BigDecimal.ONE, null, null));
 
         assertNull(newItemResult.item());
-        assertEquals(" cannot track more than " + InventoryPolicy.MAX_ITEMS, newItemResult.message());
+        assertEquals(" cannot track more than " + InventoryPolicy.MAX_ITEMS + " items", newItemResult.message());
         assertEquals(InventoryPolicy.MAX_ITEMS, inventory.size());
 
         var result = controller.addBatch(new AddBatchRequest(
