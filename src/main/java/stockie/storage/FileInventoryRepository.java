@@ -3,6 +3,7 @@ package stockie.storage;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -37,8 +38,12 @@ public final class FileInventoryRepository implements InventoryRepository {
             output.writeObject(snapshot);
             output.flush();
         }
-        Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
+        try {
+            Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException exception) {
+            Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 }
 
