@@ -24,6 +24,7 @@ public final class FxInventoryCommandHandler {
         this.controller = controller;
     }
 
+    /** Adds a batch from the supplied command arguments. */
     public FxCommandResult add(String arguments) {
         CommandArgumentParser fields = CommandArgumentParser.parse(arguments,
                 List.of(CommandConstants.ITEM, CommandConstants.SKU, CommandConstants.INVOICE,
@@ -58,6 +59,7 @@ public final class FxInventoryCommandHandler {
         return FxCommandResult.refresh(CommandResponseFormatter.addedBatch(result.item().getDisplayName()));
     }
 
+    /** Sells inventory from the item identified by the supplied command arguments. */
     public FxCommandResult sell(String arguments) {
         CommandArgumentParser fields = CommandArgumentParser.parse(arguments,
                 List.of(CommandConstants.ITEM, CommandConstants.SKU, CommandConstants.QUANTITY));
@@ -80,6 +82,7 @@ public final class FxInventoryCommandHandler {
                 ? CommandResponseFormatter.soldItems(quantity, result.item().getDisplayName()).trim() : null);
     }
 
+    /** Recalls a batch from the item identified by the supplied command arguments. */
     public FxCommandResult recall(String arguments) {
         CommandArgumentParser fields = CommandArgumentParser.parse(arguments,
                 List.of(CommandConstants.ITEM, CommandConstants.SKU, CommandConstants.INVOICE));
@@ -93,6 +96,7 @@ public final class FxInventoryCommandHandler {
         return mutation(result.message(), CommandResponseFormatter.batchRecalled());
     }
 
+    /** Removes the item identified by the supplied command arguments. */
     public FxCommandResult remove(String arguments) {
         CommandArgumentParser fields = CommandArgumentParser.parse(arguments,
                 List.of(CommandConstants.ITEM, CommandConstants.SKU));
@@ -105,6 +109,7 @@ public final class FxInventoryCommandHandler {
         return mutation(result.message(), CommandResponseFormatter.itemRemoved());
     }
 
+    /** Updates an item's SKU using the supplied command arguments. */
     public FxCommandResult updateSku(String arguments) {
         CommandArgumentParser fields = CommandArgumentParser.parse(arguments,
                 List.of(CommandConstants.ITEM, CommandConstants.CURRENT_SKU, CommandConstants.SKU));

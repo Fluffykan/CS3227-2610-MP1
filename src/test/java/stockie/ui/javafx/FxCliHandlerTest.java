@@ -1,7 +1,5 @@
 package stockie.ui.javafx;
 
-import stockie.ui.javafx.command.CommandParser;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,6 +17,7 @@ import stockie.application.controller.StockieController;
 import stockie.application.service.InventoryService;
 import stockie.entities.InventoryItem;
 import stockie.storage.InventoryRepository;
+import stockie.ui.javafx.command.CommandParser;
 import stockie.ui.javafx.util.InventoryRow;
 
 class FxCliHandlerTest {

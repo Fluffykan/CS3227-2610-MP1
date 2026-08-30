@@ -19,11 +19,13 @@ public final class FxInventoryQueryHandler {
     private final StockieController controller;
     private final Function<InventoryItem, InventoryRow> itemMapper;
 
+    /** Creates a query handler for the supplied controller and row mapper. */
     public FxInventoryQueryHandler(StockieController controller, Function<InventoryItem, InventoryRow> itemMapper) {
         this.controller = controller;
         this.itemMapper = itemMapper;
     }
 
+    /** Lists inventory items or batches according to the supplied command arguments. */
     public FxCommandResult list(String arguments) {
         String option = arguments.trim().toLowerCase(Locale.ROOT);
         StringBuilder output = new StringBuilder();
@@ -36,6 +38,8 @@ public final class FxInventoryQueryHandler {
                 int days = Integer.parseInt(option.substring("expiring-in ".length()));
                 if (days >= 0) {
                     appendExpiring(output, controller.listExpiringBatches(days).items());
+                } else {
+                    output.append("Days must not be negative.\n");
                 }
             } catch (NumberFormatException exception) {
                 output.append("Expected a whole number for days.\n");
@@ -46,6 +50,7 @@ public final class FxInventoryQueryHandler {
         return FxCommandResult.refresh(output.toString());
     }
 
+    /** Finds an inventory item using the supplied item-name or SKU arguments. */
     public FxCommandResult find(String arguments) {
         CommandArgumentParser fields = CommandArgumentParser.parse(arguments,
                 List.of(CommandConstants.ITEM, CommandConstants.SKU));
