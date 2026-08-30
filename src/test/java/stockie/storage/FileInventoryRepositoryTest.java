@@ -108,10 +108,11 @@ class FileInventoryRepositoryTest {
     }
 
     @Test
-    void saveToUnavailableLocationThrowsIOException() {
+    void saveToUnavailableLocationThrowsIOExceptionWithoutLeavingTemporaryFile() {
         Path path = temporaryDirectory.resolve("missing-directory").resolve("inventory.dat");
 
         assertThrows(IOException.class, () -> new FileInventoryRepository(path).save(new HashMap<>()));
+        assertFalse(Files.exists(path.resolveSibling("inventory.dat.tmp")));
     }
 
     @Test

@@ -1,6 +1,7 @@
 package stockie.storage;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -24,7 +25,8 @@ public final class FileInventoryRepository implements InventoryRepository {
         if (!Files.exists(path) || Files.size(path) == 0) {
             return new HashMap<>();
         }
-        try (ObjectInputStream input = new ObjectInputStream(Files.newInputStream(path))) {
+        try (InputStream raw = Files.newInputStream(path);
+            ObjectInputStream input = new ObjectInputStream(raw)) {
             @SuppressWarnings("unchecked")
             HashMap<String, InventoryItem> snapshot = (HashMap<String, InventoryItem>) input.readObject();
             return snapshot;
