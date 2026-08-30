@@ -33,7 +33,7 @@ import stockie.policy.InventoryPolicy;
 import stockie.storage.InventoryRepository;
 import stockie.util.TextNormalizer;
 
-/** Provides UI-independent inventory operations for console and JavaFX clients. */
+/** Provides UI-independent inventory operations for the JavaFX client. */
 public final class StockieController {
     private final InventoryService inventory;
     private final InventoryQueryService queries;

@@ -64,7 +64,7 @@ import stockie.ui.javafx.view.ViewMode;
  * JavaFX application UI for Stockie.
  *
  * <p>This class reuses the existing StockieController API and presents the same features
- * that were available in the console UI.</p>
+ * that are available in the command panel.</p>
  */
 public final class StockieFxApp extends Application {
     private static final DateTimeFormatter DATE_FORMAT = FxFormatter.DATE_FORMAT;
@@ -116,7 +116,7 @@ public final class StockieFxApp extends Application {
         refreshCurrentView();
     }
 
-    /** Builds app dependencies in the same way as the CLI entry point. */
+    /** Builds the dependencies required by the JavaFX application. */
     private static StockieController createController() {
         InventoryRepository repository = new FileInventoryRepository(
                 Path.of(System.getProperty("stockie.data.file", "stockie-inventory.dat")));
