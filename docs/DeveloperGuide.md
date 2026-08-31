@@ -954,6 +954,9 @@ clear method names, and Javadocs for public classes and non-obvious behavior.
 Stockie is primarily project-authored code. The following libraries, build
 tools, conventions, and external material are used or adapted in the project:
 
+The repository source code was forked from the
+[NUS CS3227 IP repository](https://github.com/NUS-CS2103-AY2627-S1/cs3227-ip).
+
 | Library or source | Version | Use in Stockie |
 | --- | --- | --- |
 | [OpenJFX](https://openjfx.io/) | 24.0.2 | JavaFX application window, controls, layouts, and properties |
