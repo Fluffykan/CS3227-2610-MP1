@@ -133,6 +133,8 @@ list expiring-in <days>
 `list expired` shows perishable batches whose expiry date is before today.  
 `list expiring-in <days>` shows perishable batches expiring from today through the specified non-negative number of days, grouped by item and ordered by expiry date. Non-perishable items are excluded from expiry views.
 
+The dashboard's **Expiring Soon** summary card uses the same expiry window. It shows the total quantity in matching perishable batches, rather than the number of matching products or batches. The window defaults to the next 7 days; when you enter a different positive number of days in the **Expiring In** field and click **Apply**, both the card value and its caption update. For example, 20 units of Product A and 2 units of Product B expiring within 7 days are shown as **22** with the caption **next 7 days**.
+
 #### GUI Usage
 
 You may use the buttons here to display the different views of the inventory.  

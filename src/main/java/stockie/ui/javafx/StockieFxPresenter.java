@@ -58,9 +58,11 @@ public final class StockieFxPresenter {
         int totalQuantity = items.stream().mapToInt(InventoryItem::getTotalQuantity).sum();
         BigDecimal totalCost = items.stream().map(InventoryItem::getTotalCost)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        int expiringCount = controller.listExpiringBatches(expiringInDays).items().stream()
-                .mapToInt(item -> item.batches().size()).sum();
-        metricsConsumer.accept(new DashboardMetrics(items.size(), totalQuantity, totalCost, expiringCount));
+        int expiringQuantity = controller.listExpiringBatches(expiringInDays).items().stream()
+                .flatMap(item -> item.batches().stream())
+                .mapToInt(PerishableBatch::getQuantity)
+                .sum();
+        metricsConsumer.accept(new DashboardMetrics(items.size(), totalQuantity, totalCost, expiringQuantity));
     }
 
     private void applyListResult(ListQueryResult result, String successStatus) {

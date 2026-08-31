@@ -75,6 +75,7 @@ public final class StockieFxApp extends Application {
     private final Label totalStockValue = new Label("0");
     private final Label inventoryCostValue = new Label("0.00");
     private final Label expiringSoonValue = new Label("0");
+    private final Label expiringSoonCaption = new Label("next 7 days");
 
     private final InventoryDetailsView detailsView = new InventoryDetailsView();
     private InventoryTableView inventoryView;
@@ -267,16 +268,20 @@ public final class StockieFxApp extends Application {
                 createMetricCard("Tracked Items", trackedItemsValue, "catalog size"),
                 createMetricCard("Total Stock", totalStockValue, "units on hand"),
                 createMetricCard("Inventory Cost", inventoryCostValue, "total value"),
-                createMetricCard("Expiring Soon", expiringSoonValue, "next " + expiringInDays + " days"));
+                createMetricCard("Expiring Soon", expiringSoonValue, expiringSoonCaption));
         cards.getStyleClass().add("cards-row");
         return cards;
     }
 
     /** Creates one metric card in the dashboard area. */
     private StackPane createMetricCard(String title, Label valueLabel, String caption) {
+        return createMetricCard(title, valueLabel, new Label(caption));
+    }
+
+    /** Creates one metric card using a caption label that can be updated after construction. */
+    private StackPane createMetricCard(String title, Label valueLabel, Label captionLabel) {
         Label titleLabel = new Label(title);
         titleLabel.getStyleClass().add("card-title");
-        Label captionLabel = new Label(caption);
         captionLabel.getStyleClass().add("card-caption");
 
         VBox content = new VBox(4, titleLabel, valueLabel, captionLabel);
@@ -354,6 +359,7 @@ public final class StockieFxApp extends Application {
         totalStockValue.setText(String.valueOf(metrics.totalStock()));
         inventoryCostValue.setText("$" + formatPrice(metrics.inventoryCost()));
         expiringSoonValue.setText(String.valueOf(metrics.expiringSoon()));
+        expiringSoonCaption.setText("next " + expiringInDays + " days");
     }
 
     /** Updates table content while preserving a sensible initial selection. */

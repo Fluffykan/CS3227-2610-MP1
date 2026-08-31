@@ -684,6 +684,14 @@ and delegates to an inventory, query, or history handler. The handler calls
 - `selectedRow` tells the application to display a particular query result and
   update the detail panel.
 
+The dashboard metrics follow the same selected expiry window used by the
+expiring-items view. `StockieFxPresenter.refreshMetrics(int expiringInDays)`
+queries the matching `ExpiringItem` results and sums the quantities of their
+matching `PerishableBatch` objects for the **Expiring Soon** value. It does not
+count the number of expiring or batches. `StockieFxApp` owns the selected window, which
+defaults to 7 days, and updates the card caption after each refresh so it
+matches the selected number of days.
+
 Button-based actions in `StockieFxApp` use the same controller boundary as
 command-panel actions. New UI behavior should therefore delegate to an
 existing handler or controller operation instead of changing inventory state

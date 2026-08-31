@@ -40,7 +40,7 @@ class StockieFxPresenterTest {
         assertEquals(2, rows.size());
         assertEquals("INV-1", rows.stream().filter(row -> row.itemName().equals("Bread"))
                 .findFirst().orElseThrow().batches().get(0).invoice());
-        assertEquals(new DashboardMetrics(2, 6, new BigDecimal("14.00"), 1), metrics.get(0));
+        assertEquals(new DashboardMetrics(2, 6, new BigDecimal("14.00"), 2), metrics.get(0));
         assertEquals("Showing all items", statuses.get(0));
     }
 
@@ -57,7 +57,7 @@ class StockieFxPresenterTest {
 
         assertEquals(List.of("Milk"), rows.stream().map(InventoryRow::itemName).toList());
         assertEquals(0, rows.get(0).totalQuantity());
-        assertEquals(new DashboardMetrics(3, 6, new BigDecimal("10.00"), 1), metrics.get(0));
+        assertEquals(new DashboardMetrics(3, 6, new BigDecimal("10.00"), 4), metrics.get(0));
         assertEquals("Showing depleted items", statuses.get(0));
     }
 
@@ -93,6 +93,26 @@ class StockieFxPresenterTest {
         assertEquals(4, rows.get(0).totalQuantity());
         assertEquals(new BigDecimal("6.00"), rows.get(0).inventoryCost());
         assertEquals("Showing batches expiring in 7 days", statuses.get(0));
+    }
+
+    @Test
+    void refreshExpiringMetrics_sumsQuantitiesAcrossMatchingBatches() {
+        InventoryService inventory = new InventoryService();
+        InventoryRepository repository = new EmptyRepository();
+        StockieController controller = new StockieController(inventory,
+                new CommandManager(inventory, repository), repository);
+        LocalDate today = LocalDate.now();
+        controller.addBatch(new AddBatchRequest("Product A", "A", "INV-A", 20,
+                new BigDecimal("1.00"), today.plusDays(3), null));
+        controller.addBatch(new AddBatchRequest("Product B", "B", "INV-B", 2,
+                new BigDecimal("1.00"), today.plusDays(5), null));
+        List<DashboardMetrics> metrics = new ArrayList<>();
+        StockieFxPresenter presenter = new StockieFxPresenter(controller, rows -> { }, metrics::add,
+                status -> { }, () -> { });
+
+        presenter.refresh(ViewMode.ALL, 7);
+
+        assertEquals(22, metrics.get(0).expiringSoon());
     }
 
     @Test
