@@ -17,7 +17,7 @@ Stockie is an inventory workbench for tracking items as invoice-based batches. I
     1. After installation, run `java --version` again to confirm the setup is complete.
 
 <!-- TODO: add the release link here -->
-1. Download the latest release of Stockie from [here]().
+1. Download the latest release of Stockie (stockie.jar) from [here](https://github.com/Fluffykan/CS3227-2610-MP1/releases/tag/v1.0).
 
 1. Open a command prompt or terminal and type `cd` followed by the location of the downloaded `.jar` file (e.g. `cd C:\Users\your_username\folder_name\`).
 
