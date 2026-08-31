@@ -2,6 +2,9 @@
 
 Stockie is a JavaFX inventory workbench for managing invoice-based batches.
 
+For project architecture, development workflows, testing, and contribution
+guidance, see the [Developer Guide](docs/DeveloperGuide.md).
+
 ## Setting up in Intellij
 
 Prerequisites: JDK 25, update Intellij to the most recent version.
