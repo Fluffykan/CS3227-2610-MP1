@@ -1,0 +1,39 @@
+## Development summary
+
+The development proceeded as follows:
+
+1. You requested that the **Expiring Soon** card:
+   - Sum total quantities instead of counting products/batches.
+   - Default to the next 7 days.
+   - Update its subtitle when the user selects a different number of days.
+
+2. I inspected the JavaFX presenter and application code, then updated:
+   - `StockieFxPresenter` to sum matching `PerishableBatch` quantities.
+   - `StockieFxApp` to dynamically update the expiry-window caption.
+   - `StockieFxPresenterTest` with updated expectations and a `20 + 2 = 22` regression test.
+
+3. Verification was attempted using Java 25:
+   - Java 25 was confirmed active.
+   - Checkstyle passed.
+   - Gradle test execution was affected by Windows/Java 25 cached-JAR and temporary-directory permission errors.
+   - No commit or push was performed.
+
+4. You requested documentation updates. I updated:
+   - `UserGuide.md` with the new quantity-based behavior and dynamic day range.
+   - `DeveloperGuide.md` with the presenter and application responsibilities.
+
+5. You then requested that the User Guide information be placed specifically under the `list expiring-in <days>` section. I relocated it accordingly.
+
+6. You requested a commit message. I proposed:
+
+```text
+Fix expiring-soon summary quantity
+
+The Expiring Soon card counts batches instead of total units, which
+understates expiring stock. Its caption also does not reflect custom
+expiry windows.
+
+Sum quantities across matching perishable batches and update the caption
+for the selected day range. Document the revised behavior in the user and
+developer guides.
+```
