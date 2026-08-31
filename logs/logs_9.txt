@@ -1,0 +1,23 @@
+Summary of development interactions:
+
+1. Renamed `CommandMetadata.name()` to `commandName()`
+   - Reason: `name()` conflicts with the final `Enum.name()` method.
+   - Updated the corresponding call in `FxCliHandler`.
+   - Verified Java 25 was in use.
+   - Tests could not run because Gradle required downloading a distribution and network access was blocked.
+
+2. Scanned the repository for unused methods
+   - Compared method declarations with references across `src/main` and `src/test`.
+   - Identified `InventoryService.rebuildSkuIndex()` as unused.
+   - Confirmed other apparent candidates were used through tests, method references, callbacks, or public APIs.
+
+3. Clarified SKU-index responsibilities
+   - `FileInventoryRepository.load()` only deserializes persisted inventory.
+   - `InventoryService.load()` validates inventory and constructs the SKU index.
+   - The indexing logic in `InventoryService.load()` was similar to, but more complete than, `rebuildSkuIndex()`.
+
+4. Removed the unused method
+   - Deleted `rebuildSkuIndex()` from `InventoryService`.
+   - Confirmed no references remained.
+
+No commits or pushes were performed.

@@ -1,0 +1,30 @@
+Development summary, in order:
+
+1. Improved CLI named-argument validation in `ConsoleUi`.
+   - Identified that `recall` only reported missing `invoice` when both `--item` and `--sku` were absent.
+   - Changed required fields from a flat list to grouped alternatives (`List<List<String>>`), so a command can require “one of these fields” plus other required fields.
+   - Applied the same fix to `remove`.
+
+2. Added expiry-based inventory listings.
+   - Proposed and implemented `list expiring-in <days>`.
+   - Added query/result types for perishable batches and grouped them by item.
+   - Ordered batches by ascending expiry; ordered item groups by their earliest expiry.
+   - Added `list expired`, using the same output shape as expiring-in.
+
+3. Implemented the `sell` command.
+   - Supports `sell --item <name> --quantity <number>` and `sell --sku <sku> --quantity <number>`.
+   - Validates existence and stock availability.
+   - Sells perishables from earliest expiry first; sells non-perishables by ascending invoice number.
+   - Supports partial batch consumption, recalculates quantity/cost, persists changes, and integrates with undo/redo.
+   - Added console UI test coverage and manually validated the sell ordering and history operations.
+   - The full existing console test suite still stops at a pre-existing formatting mismatch in the first test.
+
+4. Began planning a JavaFX desktop UI.
+   - You asked for a JavaFX UI for the CLI-based application.
+   - I provided a preview showing:
+     - Inventory table with item, SKU, quantity, cost, and next expiry
+     - Views for all items, expiring soon, expired, depleted, and history
+     - Search/filter area
+     - Add batch and sell item actions
+   - You approved the design and asked to implement it.
+   - I began inspecting the current application wiring and confirmed `Stockie` currently constructs the repository, service, command manager, controller, and console UI. The JavaFX implementation had not yet been written when you requested this summary.

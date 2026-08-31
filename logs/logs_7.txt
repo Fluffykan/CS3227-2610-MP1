@@ -1,0 +1,50 @@
+Development interactions covered:
+
+1. **User guide command index**
+   - Completed the table of contents under “List of Commands”.
+   - Updated command headings with command names.
+   - Standardized capitalization of command titles.
+
+2. **Command summary**
+   - Added a command summary table containing all commands and CLI formats.
+   - Added hyperlinks from each command name to its detailed section.
+
+3. **GUI error handling**
+   - Investigated why validation errors appeared in separate popups.
+   - Identified immediate warning calls during individual field validation as the cause.
+   - Refactored validation to collect errors and display them in a single popup.
+   - Improved field-specific error messages.
+
+4. **Search-bar behavior**
+   - Investigated Enter-key behavior in the Find search bar.
+   - Found that the text field had no Enter-key action configured.
+   - Proposed reusing the existing Find button action to avoid duplicated search logic.
+   - Discussed when duplicate invocation might occur and its costs.
+   - This change was proposed but not implemented.
+
+5. **User guide proofreading and organization**
+   - Added missing full stops.
+   - Improved wording and consistency.
+   - Added an introduction explaining that command sections contain both CLI and GUI instructions.
+   - Renamed repeated `CLI Users` and `GUI Users` sections to consistent `CLI Usage` and `GUI Usage` subsections.
+   - Corrected GUI instructions for recalling a batch.
+   - Standardized headings and CLI terminology.
+   - The requested relocation of “Command Summary” and addition of the release link were intentionally excluded.
+
+6. **Documentation assets**
+   - Checked all files under `docs/files`.
+   - Verified references across the repository and User Guide.
+   - Removed only images confirmed to be unused.
+
+7. **Git commits**
+   - Proposed commit messages and revised the second message to reference creating a user guide.
+   - Created:
+     - `0355386 Improve GUI error message presentation`
+     - `d8ebafb Create user guide`
+     - `9c68591 Improve user guide and remove unused images`
+   - The final commit included all subsequent User Guide improvements and unused-image removal.
+   - The working tree was clean after committing.
+
+8. **Verification**
+   - Attempted to run the Gradle test suite using Java 25.
+   - Testing was blocked because Gradle could not create its wrapper directory/lock file under `C:\.gradle` due to permissions.

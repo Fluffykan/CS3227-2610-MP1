@@ -1,0 +1,46 @@
+### Development summary
+
+- Reviewed `FxCliHandler.java` for maintainability improvements.
+- Implemented command handler separation:
+  - `FxInventoryCommandHandler`
+  - `FxInventoryQueryHandler`
+  - `FxHistoryCommandHandler`
+- Moved command-related classes into `ui.javafx.command`.
+- Renamed `CommandArguments` to `CommandArgumentParser`.
+- Added `CommandMetadata` enum for command definitions.
+- Added `CommandConstants` for command names, options, and messages.
+- Moved response formatting into `CommandResponseFormatter`.
+- Introduced `FxCommandResult` to represent:
+  - response messages;
+  - refresh requirements;
+  - selected rows.
+- Updated `StockieFxApp` to handle refreshes and row selection centrally.
+- Updated undo and redo to correctly request UI refreshes.
+- Removed obsolete callback dependencies from `FxCliHandler`.
+- Cleaned unused code and callbacks.
+- Reviewed broad exception catching:
+  - replaced date parsing `RuntimeException` handling with `DateTimeParseException`;
+  - improved inventory validation handling.
+- Improved validation messages for invalid quantities and prices.
+- Reviewed refresh side effects and explained how `refresh.run()` works.
+- Reviewed coupling and dependency structure.
+- Confirmed the six-argument constructor proposal was no longer necessary because the constructor was reduced to three arguments.
+- Reviewed input trimming across parsers and command entry points.
+- Added focused `FxCliHandlerTest` coverage for:
+  - empty input;
+  - repeated options;
+  - missing option values;
+  - unknown options;
+  - negative quantities;
+  - invalid prices;
+  - invalid dates;
+  - both `--item` and `--sku`;
+  - failed mutations not requesting refresh;
+  - successful add, sell, recall, update, remove, undo, and redo requesting refresh.
+- Split the newly added tests so each test contains one assertion and has a specific failure name.
+- Ran the focused test suite successfully:
+  - 28 tests passed;
+  - build successful.
+- Earlier, the full project test suite also passed:
+  - 125 tests passed;
+  - no failures.

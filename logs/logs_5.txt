@@ -1,0 +1,94 @@
+Development proceeded through these main interactions:
+
+1. Created the project-specific `seedu-java-coding-standard` skill from the SE-EDU Java conventions and updated agent instructions to require it.
+
+2. Created the `seedu-git-standard` skill from the SE-EDU Git conventions and updated agent instructions to require it for future commits.
+
+3. Proposed and created separate commits for:
+   - Java code changes
+   - Each standalone agent-file change
+
+4. Set up Checkstyle using the SE-EDU configuration and AddressBook Level 3 reference configuration.
+
+5. Added JUnit tests for:
+   - `TextNormalizer`
+   - `InventoryItem`
+   - `StockieController`
+   - Command classes
+   - `InventoryService`
+   - `FileInventoryRepository`
+   - Batch classes
+   - `InventoryPolicy`
+   - `ConsoleUi`
+   - `FxCliHandler`
+   - `StockieFxPresenter`
+
+6. Added edge-case tests covering:
+   - Invalid expiry dates
+   - Zero and negative quantities
+   - Zero and negative prices
+   - Empty SKU and item names
+   - Selling the exact available inventory quantity
+   - Missing item keys
+   - Repository I/O and deserialization failures
+   - SKU index updates and removals
+   - Inventory loading and copying behavior
+   - Expiry-window boundaries and ordering
+
+7. Changed inventory validation so that:
+   - Quantity `0` is rejected
+   - Empty names are rejected
+   - Empty SKUs are rejected
+   - Price `0` remains valid for giveaway items
+
+8. Improved corrupted-data loading by recommending and implementing behavior that skips invalid entries instead of preventing all valid inventory from loading.
+
+9. Updated `expiring-in` behavior so that:
+   - `0` includes items expiring today
+   - Positive values include the corresponding future window
+
+10. Updated `FxCliHandler` so that `bye` terminates the session and closes the application.
+
+11. Split combined command tests into individual test classes such as:
+   - `AddBatchCommandTest`
+   - `RemoveItemCommandTest`
+   - `SellItemCommandTest`
+   - `RecallBatchCommandTest`
+   - `UpdateSkuCommandTest`
+
+12. Analysed test coverage and identified under-tested classes, methods, missing paths, and boundary values.
+
+13. Added JaCoCo configuration to Gradle for generating coverage reports and enforcing coverage checks.
+
+14. Reviewed Checkstyle violations and fixed:
+   - Import ordering
+   - Missing braces
+   - Missing Javadocs
+   - Declaration ordering
+   - Line-length violations
+   - Empty catch blocks
+   - One-statement-per-line issues
+   - Missing switch defaults
+   - Test naming compatibility
+
+15. Verified the final setup with:
+   - `checkstyleMain`
+   - `checkstyleTest`
+   - `test`
+   - `check`
+   - JaCoCo coverage verification
+   - `git diff --check`
+
+All verification tasks passed after the Checkstyle fixes.
+
+16. Proposed the final Checkstyle commit message:
+
+```text
+Fix Checkstyle violations
+
+The project contains formatting, import-order, brace, Javadoc, and line-length
+violations that prevent the Checkstyle tasks from passing.
+
+Correct the Java sources and tests to follow the SE-EDU coding standard, while
+preserving the existing underscore-based test naming convention.
+```

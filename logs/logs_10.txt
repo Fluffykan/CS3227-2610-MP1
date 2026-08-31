@@ -1,0 +1,104 @@
+## Development Interaction Summary
+
+### Testing and validation
+
+- Audited existing tests and identified coverage gaps across entities, services, controllers, commands, history, persistence, and JavaFX handlers.
+- Focused controller-boundary validation on:
+  - Leap-year expiry dates, including 29 February.
+  - Zero and negative selling quantities.
+  - Duplicate SKU updates, including case-insensitive values.
+  - Missing item names and SKUs.
+  - Invalid, incomplete, or null `AddBatchRequest` objects.
+  - Maximum-item enforcement using `InventoryPolicy.MAX_ITEMS`.
+- Added and split tests for:
+  - Zero versus negative quantities.
+  - Null versus incomplete add-batch requests.
+  - Negative prices.
+  - Valid and expired perishable batches.
+  - Repository loading and exception propagation.
+- Added service-level tests ensuring invalid batches do not create items or SKU indexes.
+
+### Commands and history
+
+- Proposed and implemented tests for:
+  - New commands clearing redo history.
+  - Multi-command LIFO undo/redo behavior.
+  - Persistence failures for recall, remove, sell, and SKU updates.
+  - Failed commands not polluting history.
+  - Getter coverage and pre-execution behavior.
+  - Execution failures and partial mutations.
+  - Full command sequences involving add, sell, recall, SKU update, and remove.
+  - Case-insensitive SKU behavior after undo and redo.
+  - Undo/redo failures when history is empty or exhausted.
+- Discussed the purpose of `metadataItem`, command snapshots, and why missing-item removal tests should not create an item.
+- Removed the specific test that incorrectly expected `RemoveItemCommand` to create an item.
+
+### Repository and build issues
+
+- Diagnosed case-insensitive SKU lookup test failures caused by unnormalized direct service calls.
+- Corrected an outdated maximum-item error-message assertion.
+- Investigated Windows file locks involving cached JavaFX and JUnit JARs.
+- Recommended and implemented separate Gradle cache usage for VS Code and terminal builds.
+- Explained workarounds involving:
+  - Separate `GRADLE_USER_HOME` locations.
+  - Stopping Gradle daemons.
+  - Using `--no-daemon`.
+  - Avoiding concurrent IDE Gradle synchronization.
+- Verified that the Gradle wrapper uses Java 25 and Gradle 9.6.1.
+
+### Checkstyle
+
+- Set up Checkstyle using the SE-EDU configuration.
+- Ran Checkstyle and fixed import-order violations.
+- Confirmed that `checkstyleMain` and `checkstyleTest` pass.
+
+### Legacy CLI
+
+- Removed files related to the legacy CLI because the project now uses the JavaFX interface.
+- Verified that legacy CLI files were removed correctly.
+- Created and applied commit proposals for the related changes.
+
+### Developer Guide
+
+Created and iteratively improved the Developer Guide with:
+
+- Project overview and prerequisites.
+- Repository fork and setup instructions.
+- Java 25 and Gradle configuration.
+- Build, test, Checkstyle, and packaged JAR instructions.
+- Architecture overview and normal user-input sequence diagrams.
+- Mermaid mutation-flow activity diagram.
+- Core entity class diagram.
+- Command and service dependency diagram.
+- Explanation of the separate mutation and query services.
+- Persistence and data-file lifecycle.
+- Command history and undo/redo behavior.
+- GUI execution model.
+- Extension points with affected production and test files.
+- Serialization compatibility notes.
+- Testing strategy and layer responsibilities.
+- Library and external-code acknowledgements.
+- Formatting, numbering, diagram-reference, and wording corrections.
+
+### JavaFX UI testing
+
+- Added initial tests for UI utilities and controls:
+  - `FxFormatter`
+  - `BatchRow`
+  - `InventoryTableView`
+  - `InventoryDetailsView`
+- Strengthened the tests to verify actual behavior rather than only control structure:
+  - Table cell values.
+  - Row replacement and selection.
+  - Empty-state clearing.
+  - Detail labels and batch values.
+  - Date and price formatting.
+  - Presenter behavior for all, depleted, expired, expiring, and empty views.
+  - Dashboard metrics and status messages.
+- Added JavaFX test-thread support.
+- Final verification passed:
+  - 14 focused UI and presenter tests.
+  - `checkstyleMain`.
+  - `checkstyleTest`.
+
+Throughout development, changes were kept scoped to the requested testing, documentation, build, and UI-coverage improvements, while unrelated working-tree changes were preserved.

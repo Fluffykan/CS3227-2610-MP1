@@ -1,0 +1,111 @@
+## Development summary
+
+1. Package organization and JavaFX planning
+   - Proposed several package structures for the Stockie project.
+   - Chose a layered structure suitable for both console UI and future JavaFX:
+
+     ```text
+     stockie
+     ├─ application
+     ├─ command
+     ├─ model
+     ├─ storage
+     ├─ ui.console
+     └─ util
+     ```
+
+   - Moved the composition root to `stockie.Stockie`.
+   - Moved the console interface to `stockie.ui.console.ConsoleUi`.
+   - Renamed the old service package to `stockie.application`.
+
+2. Controller and UI responsibilities
+   - Refactored `StockieController` into a UI-independent application facade.
+   - `ConsoleUi` calls the controller instead of directly operating on inventory state.
+   - Discussed separating console parsing and rendering, but retained parsing-error output in the console layer for simplicity.
+   - Identified that JavaFX can later call the same controller while providing its own controls and dialogs.
+
+3. Query versus mutable command paths
+   - Preserved separate paths:
+     - Queries: `ConsoleUi → StockieController → InventoryQueryService`
+     - Mutations: `ConsoleUi → StockieController → CommandManager → InventoryCommand`
+   - Agreed this is a sound separation: queries remain simple and side-effect-free, while mutable operations gain persistence and undo/redo support.
+
+4. Request objects and command categories
+   - Discussed request objects such as `AddBatchRequest`.
+   - Kept `AddBatchRequest` because adding a batch has many related fields.
+   - Did not add a request object for simpler operations such as recall/remove.
+   - Distinguished UI-level parsed instructions from domain-level reversible commands.
+
+5. Batch removal renamed to recall
+   - Replaced the user-facing `remove` batch command with `recall`.
+   - Implemented:
+
+     ```text
+     recall (--item <name> | --sku <sku>) --invoice <invoice>
+     ```
+
+   - Renamed related application/domain types:
+     - `RemoveBatchCommand` → `RecallBatchCommand`
+     - `RemoveBatchResult` → `RecallBatchResult`
+     - `removeBatch(...)` → `recallBatch(...)`
+   - Added both name- and SKU-based controller methods.
+   - Retained undo/redo support.
+
+6. Whole-item removal
+   - Added a new, separate `remove` command for deleting an entire item and all its batches:
+
+     ```text
+     remove (--item <name> | --sku <sku>)
+     ```
+
+   - Added confirmation:
+
+     ```text
+     warning: this will remove <item> and all of its batches. Continue? (yes/no)
+     ```
+
+   - Only `yes` proceeds; any other response cancels.
+   - Added:
+     - `RemoveItemCommand`
+     - `RemoveItemResult`
+     - `InventoryService.removeItem(...)`
+     - Controller methods for removal by name or SKU.
+   - The command snapshots the full item, allowing undo/redo to restore all batches, totals, category, and SKU.
+
+7. SKU update command
+   - Added a reversible SKU update command:
+
+     ```text
+     update-sku (--item <name> | --current-sku <old sku>) --sku <new sku>
+     ```
+
+   - Added:
+     - `UpdateSkuCommand`
+     - `UpdateSkuResult`
+     - `InventoryService.updateSku(...)`
+     - Controller methods for lookup by item name or current SKU.
+   - Ensured SKU updates keep `itemsBySku` synchronized with the item’s mutable SKU field.
+   - Added validation for:
+     - Missing/invalid identifiers
+     - Existing SKU collision
+     - Updating to the same SKU
+   - Undo restores the old SKU; redo reapplies the new one.
+
+8. Validation improvement discussion
+   - Noted a limitation in `parseNamedArguments`: it handles mandatory individual fields but not “one of these fields is mandatory.”
+   - Discussed avoiding duplicate validation messages.
+   - Recommended parsing without ordinary required fields for `recall` and `update-sku`, then performing combined command-specific validation once:
+     - `recall`: require `--invoice` and one of `--item` / `--sku`
+     - `update-sku`: require `--sku` and one of `--item` / `--current-sku`
+   - This recommendation was discussed but not yet implemented.
+
+9. Testing
+   - Updated the console UI test plan throughout development.
+   - Added coverage for:
+     - Recall by SKU
+     - Recall validation
+     - Item removal confirmation, cancellation, undo, and redo
+     - SKU updates by both identifier forms
+     - SKU collision and no-op validation
+     - SKU update undo/redo and lookup behaviour
+   - The final reported verification was: **all 15 console UI test cases passed**.

@@ -1,0 +1,63 @@
+Summary of the development interactions:
+
+1. User requested a complete `docs/UserGuide.md` for Stockie, accurately describing all current features, setup, and testing.
+
+2. I inspected the repository to identify:
+   - Available JavaFX and CLI entry points
+   - Supported commands
+   - Validation rules
+   - Persistence behavior
+   - Existing UI test cases
+   - Gradle build and run commands
+
+3. I created `docs/UserGuide.md` covering:
+   - JDK 25 and IntelliJ setup
+   - `gradlew run`, `runCli`, and `shadowJar`
+   - JavaFX workbench features
+   - CLI commands:
+     - `add`
+     - `list`
+     - `find`
+     - `sell`
+     - `recall`
+     - `remove`
+     - `update-sku`
+     - `undo`
+     - `redo`
+     - `help`
+     - `bye`
+   - Validation rules
+   - Data persistence
+   - Automated and manual testing instructions
+
+4. User asked why multiple `stockie-inventory.dat` files existed.
+
+5. I inspected the repository and explained that the files were generated in different working directories because Stockie uses the relative path `stockie-inventory.dat`. I identified copies under:
+   - The project root
+   - `src/main/java`
+   - `src/main/java/stockie`
+   - Build output directories
+
+6. User deleted the files and reported that the application still worked.
+
+7. I explained that Stockie starts with an empty inventory when the data file is missing and recreates the file after the first successful inventory change.
+
+8. User clarified that no Stockie warning appeared and showed JavaFX warnings.
+
+9. I inspected `FileInventoryRepository.java` and confirmed that missing or empty files intentionally return an empty inventory without warning. I clarified that the displayed warnings came from JavaFX/Java runtime compatibility messages, not Stockie.
+
+10. User asked where `gradlew run` stores its data.
+
+11. I explained that it normally stores data in the project root:
+
+```text
+C:\Users\Junho\Desktop\NUS_MODS\CS3227\cs3227-ip\stockie-inventory.dat
+```
+
+This is because the application uses the relative default path:
+
+```java
+System.getProperty("stockie.data.file", "stockie-inventory.dat")
+```
+
+No commits or pushes were made.

@@ -1,0 +1,202 @@
+Here is a chronological summary of the development interactions.
+
+### 1. Renaming and initial chatbot behavior
+
+- Renamed the chatbot from Duke to Stockie.
+- Updated the word art/banner to display Stockie.
+- Implemented:
+  - Greeting message.
+  - Exit on `bye`.
+  - Echoing user inputs.
+  - Case-insensitive commands.
+  - Scanner closure.
+  - `printDivider()` for console formatting.
+- Added an unknown-command response and a `help` command.
+
+### 2. Basic inventory tracking
+
+- Added `add`, `remove`, and `list` commands.
+- Used a `HashMap` for item storage because ordering was initially not required.
+- Prevented duplicate item names.
+- Changed `remove` to use item names rather than indexes.
+- Added:
+  - Quantity tracking.
+  - Inventory cost calculation.
+  - Batch-level invoice tracking.
+  - Duplicate invoice validation.
+  - Empty-list messaging: `No items in list`.
+
+### 3. Batch and item modelling
+
+- Considered several designs for batches and inventory storage.
+- Chose immutable batch objects.
+- Kept invoice numbers inside `Batch` despite also using them as map keys, because invoice details are part of the batch’s domain data and future Excel export requirements.
+- Added:
+  - `Batch`
+  - `PerishableBatch`
+  - `NonPerishableBatch`
+  - `InventoryItem`
+  - `ItemCategory`
+- Added required item SKU support.
+- Added optional batch UPC support.
+- Preserved SKU as a modifiable item field.
+
+### 4. Perishable and non-perishable inventory
+
+- Considered multiple ways to represent item categories.
+- Selected a design that guarantees all batches under an item share the item’s category.
+- Automatically determined category:
+  - An expiry date means perishable.
+  - No expiry date means non-perishable.
+- Changed expiry format to `dd-MM-yyyy`.
+- Added confirmation before adding expired batches.
+- Added an out-of-stock notification when the final batch is removed.
+- Retained the item record after its final batch is removed.
+
+### 5. Undo, redo, persistence, and storage
+
+- Discussed snapshot-based undo/redo.
+- Identified that snapshots must preserve:
+  - Item name.
+  - SKU.
+  - Category.
+  - Invoice number.
+  - Quantity.
+  - Unit price.
+  - UPC.
+  - Expiry date.
+- Implemented:
+  - `InventoryCommand`
+  - `AddBatchCommand`
+  - `RemoveBatchCommand`
+  - `CommandManager`
+- Added automatic saving after successful changes.
+- Added rollback when saving fails.
+- Ensured undo and redo display all affected batch fields.
+- Updated removal undo behavior so removing the last batch can be fully reversed.
+- Used isolated storage files for UI testing rather than the production inventory file.
+
+### 6. UI testing skill and test coverage
+
+- Created and used the project-specific `test-ui` skill.
+- Defined UI test cases in `test/ui-test-plan.md`.
+- Added test execution and result recording in `test/ui-test-results.md`.
+- Added tests for:
+  - Basic add/remove/list behavior.
+  - Missing fields.
+  - Invalid quantities and prices.
+  - Invalid commands.
+  - Duplicate fields.
+  - Duplicate invoices.
+  - Item names with spaces.
+  - Expired batches.
+  - Undo and redo.
+  - Empty undo/redo history.
+  - Help.
+  - Unknown commands.
+  - SKU and name lookup.
+  - Depleted inventory filtering.
+- Added dynamic date substitution for expiry tests.
+- Ensured each test starts with a clean, separate test data file.
+- Repeatedly ran the UI suite; the latest completed suite passed all 13 cases before the later package refactor.
+
+### 7. Java and Gradle support
+
+- Checked and merged Gradle support from the `add-gradle-support` branch.
+- Adjusted Java compatibility:
+  - Temporarily discussed Java 21.
+  - Reverted to Java 25.
+- Increased the maximum number of tracked items:
+  - From 100.
+  - To 200,000.
+- Verified compilation using Java 25 and Gradle.
+
+### 8. Find command
+
+- Considered three lookup designs:
+  1. Scan all items.
+  2. Maintain a secondary `SKU → InventoryItem` index.
+  3. Maintain a unified identifier index.
+- Selected the secondary SKU index.
+- Clarified that the index stores references to existing objects, not duplicate item objects.
+- Implemented:
+  - `find --item <name>`
+  - `find --sku <sku>`
+- Made lookups case-insensitive.
+- Added SKU uniqueness validation.
+- Added tests for successful lookup, missing results, invalid arguments, and multi-word names.
+
+### 9. List command enhancements
+
+- Proposed and implemented:
+  - `list`
+  - `list depleted`
+- `list` displays all items.
+- `list depleted` displays only items with quantity zero.
+- Both modes sort items by SKU.
+- Added tests verifying filtering, ordering, and depleted-item lookup.
+- Updated help output accordingly.
+
+### 10. MVC and class extraction discussions
+
+- Discussed gradually moving toward MVC architecture.
+- Identified existing conceptual classes:
+  - Inventory services.
+  - Domain models.
+  - Commands.
+  - Persistence.
+  - Query services.
+- Proposed responsibilities for:
+  - `Ui`
+  - `Parser`
+  - `Storage`
+  - `StockieController`
+- Discussed alternatives including:
+  - Classic MVC.
+  - Feature-specific controllers.
+  - Command-oriented MVC.
+  - Presentation-model/MVVM-style architecture.
+  - Ports-and-adapters architecture.
+- Recommended a staged approach:
+  - Keep the controller thin.
+  - Use commands for mutations.
+  - Use query services for `list` and `find`.
+  - Later add presentation models for JavaFX.
+
+### 11. Class extraction and package organization
+
+- Extracted nested classes into separate source files, including:
+  - `InventoryService`
+  - `InventoryItem`
+  - `Batch`
+  - `PerishableBatch`
+  - `NonPerishableBatch`
+  - `ItemCategory`
+  - `CommandManager`
+  - `InventoryCommand`
+  - `AddBatchCommand`
+  - `RemoveBatchCommand`
+  - `InventoryRepository`
+  - `FileInventoryRepository`
+  - `InventoryQueryService`
+  - `StockieController`
+  - `ListQueryResult`
+  - `FindQueryResult`
+- Proposed package structure:
+
+```text
+src/main/java/
+└── stockie/
+    ├── Stockie.java
+    ├── model/
+    ├── command/
+    ├── service/
+    ├── storage/
+    ├── parser/
+    └── ui/
+```
+
+- Began applying this package organization while keeping `src/main/java` as the source root.
+- During the package migration, compilation exposed visibility and package-dependency issues that still require cleanup before the refactor is complete.
+
+Overall, the project evolved from a single chatbot class into an inventory application with batch modelling, persistence, undo/redo, search, depleted-item filtering, automated UI testing, and an in-progress MVC-oriented package architecture.
